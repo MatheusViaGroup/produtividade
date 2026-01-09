@@ -6,18 +6,32 @@ const msalConfig = {
     auth: {
         clientId: "3170544c-21a9-46db-97ab-c4da57a8e7bf", 
         authority: "https://login.microsoftonline.com/7d9754b3-dcdb-4efe-8bb7-c0e5587b86ed",
-        redirectUri: window.location.origin
+        redirectUri: window.location.origin,
+        navigateToLoginRequestUrl: true
+    },
+    cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false,
     }
 };
 
-const msalInstance = new msal.PublicClientApplication(msalConfig);
+let msalInstance: msal.PublicClientApplication | null = null;
 
-// Mapeamento dos Sites e Listas Reais
+async function getMsal() {
+    if (!msalInstance) {
+        msalInstance = new msal.PublicClientApplication(msalConfig);
+        await msalInstance.initialize();
+    }
+    return msalInstance;
+}
+
+// Mapeamento dos Sites conforme URLs fornecidas
 export const SITES = {
     POWERAPPS: "vialacteoscombr.sharepoint.com:/sites/Powerapps",
     PERSONAL: "vialacteoscombr-my.sharepoint.com:/personal/matheus_henrique_viagroup_com_br"
 };
 
+// IDs das listas sem os caracteres de escape %7B %7D
 export const LISTS = {
     CARGAS: { id: "0cf9a45c-db41-40b0-9f04-fd1a867fca77", site: SITES.POWERAPPS },
     USUARIOS: { id: "bb6b7559-4d05-4036-ad5a-ab5b136ff2a5", site: SITES.POWERAPPS },
@@ -36,19 +50,33 @@ export class GraphService {
     }
 
     static async getAccessToken() {
-        await msalInstance.initialize();
-        const accounts = msalInstance.getAllAccounts();
+        const msalApp = await getMsal();
+        const accounts = msalApp.getAllAccounts();
+        
+        const scopes = ["Sites.ReadWrite.All", "User.Read"];
+
         if (accounts.length === 0) {
-            const loginResponse = await msalInstance.loginPopup({
-                scopes: ["Sites.ReadWrite.All", "User.Read"]
+            const loginResponse = await msalApp.loginPopup({
+                scopes,
+                prompt: "select_account"
             });
             return loginResponse.accessToken;
         }
-        const tokenResponse = await msalInstance.acquireTokenSilent({
-            scopes: ["Sites.ReadWrite.All"],
-            account: accounts[0]
-        });
-        return tokenResponse.accessToken;
+
+        try {
+            const tokenResponse = await msalApp.acquireTokenSilent({
+                scopes,
+                account: accounts[0]
+            });
+            return tokenResponse.accessToken;
+        } catch (error) {
+            console.warn("Silent token acquisition failed, retrying with popup", error);
+            const loginResponse = await msalApp.acquireTokenPopup({
+                scopes,
+                account: accounts[0]
+            });
+            return loginResponse.accessToken;
+        }
     }
 
     async getListItems(listConfig: { id: string, site: string }) {
@@ -69,6 +97,7 @@ export class GraphService {
     }
 
     async updateItem(listConfig: { id: string, site: string }, itemId: string, fields: any) {
+        // SharePoint Graph API patch para fields usa o endpoint de fields do item
         return await this.client
             .api(`/sites/${listConfig.site}/lists/${listConfig.id}/items/${itemId}/fields`)
             .patch(fields);
