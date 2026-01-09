@@ -1,11 +1,10 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Usuario, Planta, Caminhao, Motorista, Carga } from './types';
 import { GraphService, LISTS } from './utils/graphService';
 
 export const useAppState = () => {
   const [state, setState] = useState<AppState>(() => {
-      // Tenta recuperar o usuário salvo no localStorage ao iniciar
       const savedUser = localStorage.getItem('produtividade_user');
       return {
         plantas: [],
@@ -18,16 +17,22 @@ export const useAppState = () => {
   });
   const [graph, setGraph] = useState<GraphService | null>(null);
   const [loading, setLoading] = useState(false);
+  const isConnecting = useRef(false);
 
   const connectToSharePoint = useCallback(async () => {
-    if (loading) return;
+    if (isConnecting.current) return;
+    isConnecting.current = true;
+    
     try {
       setLoading(true);
       const token = await GraphService.getAccessToken();
       const service = new GraphService(token);
+      
+      // Resolve IDs dos sites primeiro
+      await service.resolveSites();
       setGraph(service);
       
-      console.log("Sincronizando com SharePoint...");
+      console.log("Buscando dados das listas...");
 
       const [p, c, u, m, cr] = await Promise.all([
         service.getListItems(LISTS.PLANTAS),
@@ -37,8 +42,9 @@ export const useAppState = () => {
         service.getListItems(LISTS.CARGAS),
       ]);
 
+      console.log(`Sucesso: ${u.length} usuários carregados.`);
+
       setState(prev => {
-          // Se já tínhamos um currentUser persistido, tentamos atualizar os dados dele
           const updatedCurrentUser = prev.currentUser 
             ? u.find((user: any) => user.LoginUsuario === prev.currentUser?.LoginUsuario) || prev.currentUser
             : null;
@@ -60,27 +66,23 @@ export const useAppState = () => {
             }))
           };
       });
-      console.log("Sincronização concluída.");
     } catch (error: any) {
-      console.error("Erro SharePoint:", error);
-      // Se houver erro de token/autenticação, não alertamos imediatamente para evitar loops visuais
-      if (!error.message?.includes("Interaction required")) {
-          alert(`Erro de conexão: ${error.message || "Tente novamente mais tarde."}`);
-      }
+      console.error("Falha na conexão SharePoint:", error);
+      alert(`Erro: ${error.message || "Falha ao carregar dados do SharePoint. Verifique se você tem acesso aos sites e listas."}`);
     } finally {
       setLoading(false);
+      isConnecting.current = false;
     }
-  }, [loading]);
+  }, []);
 
-  // Auto-connect se houver conta MS ativa
   useEffect(() => {
     const checkAuth = async () => {
       if (await GraphService.hasActiveAccount()) {
-          await connectToSharePoint();
+          connectToSharePoint();
       }
     };
     checkAuth();
-  }, []);
+  }, [connectToSharePoint]);
 
   const addCarga = async (payload: any) => {
     if (!graph) return;

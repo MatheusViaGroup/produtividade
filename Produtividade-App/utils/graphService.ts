@@ -11,7 +11,7 @@ const msalConfig = {
     },
     cache: {
         cacheLocation: "localStorage",
-        storeAuthStateInCookie: false,
+        storeAuthStateInCookie: true,
     }
 };
 
@@ -21,32 +21,47 @@ export async function getMsal() {
     if (!msalInstance) {
         msalInstance = new msal.PublicClientApplication(msalConfig);
         await msalInstance.initialize();
-        // Crucial: Processa o retorno de qualquer redirecionamento e limpa a URL
         await msalInstance.handleRedirectPromise();
     }
     return msalInstance;
 }
 
-export const SITES = {
-    POWERAPPS: "vialacteoscombr.sharepoint.com:/sites/Powerapps",
-    PERSONAL: "vialacteoscombr-my.sharepoint.com:/personal/matheus_henrique_viagroup_com_br"
+// Configurações originais
+const SITE_PATHS = {
+    POWERAPPS: { host: "vialacteoscombr.sharepoint.com", path: "/sites/Powerapps" },
+    PERSONAL: { host: "vialacteoscombr-my.sharepoint.com", path: "/personal/matheus_henrique_viagroup_com_br" }
 };
 
 export const LISTS = {
-    CARGAS: { id: "0cf9a45c-db41-40b0-9f04-fd1a867fca77", site: SITES.POWERAPPS },
-    USUARIOS: { id: "bb6b7559-4d05-4036-ad5a-ab5b136ff2a5", site: SITES.POWERAPPS },
-    PLANTAS: { id: "6034003e-d0a9-4d22-a250-b36de06dfba1", site: SITES.PERSONAL },
-    CAMINHOES: { id: "6d0e876c-4d6c-4617-b8ec-de8d64f6c508", site: SITES.PERSONAL },
-    MOTORISTAS: { id: "a8b55455-02df-4aa9-a231-567c3ac27f7c", site: SITES.PERSONAL }
+    CARGAS: { id: "0cf9a45c-db41-40b0-9f04-fd1a867fca77", siteRef: "POWERAPPS" },
+    USUARIOS: { id: "bb6b7559-4d05-4036-ad5a-ab5b136ff2a5", siteRef: "POWERAPPS" },
+    PLANTAS: { id: "6034003e-d0a9-4d22-a250-b36de06dfba1", siteRef: "PERSONAL" },
+    CAMINHOES: { id: "6d0e876c-4d6c-4617-b8ec-de8d64f6c508", siteRef: "PERSONAL" },
+    MOTORISTAS: { id: "a8b55455-02df-4aa9-a231-567c3ac27f7c", siteRef: "PERSONAL" }
 };
 
 export class GraphService {
     private client: Client;
+    private siteIds: Record<string, string> = {};
 
     constructor(token: string) {
         this.client = Client.init({
             authProvider: (done) => done(null, token)
         });
+    }
+
+    async resolveSites() {
+        try {
+            console.log("Resolvendo IDs de sites SharePoint...");
+            for (const [key, config] of Object.entries(SITE_PATHS)) {
+                const site = await this.client.api(`/sites/${config.host}:${config.path}`).get();
+                this.siteIds[key] = site.id;
+                console.log(`Site ${key} resolvido: ${site.id}`);
+            }
+        } catch (error) {
+            console.error("Erro ao resolver sites:", error);
+            throw new Error("Não foi possível localizar os sites do SharePoint. Verifique as URLs e permissões.");
+        }
     }
 
     static async hasActiveAccount() {
@@ -73,10 +88,12 @@ export class GraphService {
         }
     }
 
-    async getListItems(listConfig: { id: string, site: string }) {
-        const apiPath = `/sites/${listConfig.site}:/lists/${listConfig.id}/items`;
+    async getListItems(listConfig: { id: string, siteRef: string }) {
+        const siteId = this.siteIds[listConfig.siteRef];
+        if (!siteId) throw new Error(`Site ID não resolvido para ${listConfig.siteRef}`);
+
         const response = await this.client
-            .api(apiPath)
+            .api(`/sites/${siteId}/lists/${listConfig.id}/items`)
             .expand("fields")
             .get();
         
@@ -86,17 +103,17 @@ export class GraphService {
         }));
     }
 
-    async createItem(listConfig: { id: string, site: string }, fields: any) {
-        const apiPath = `/sites/${listConfig.site}:/lists/${listConfig.id}/items`;
+    async createItem(listConfig: { id: string, siteRef: string }, fields: any) {
+        const siteId = this.siteIds[listConfig.siteRef];
         return await this.client
-            .api(apiPath)
+            .api(`/sites/${siteId}/lists/${listConfig.id}/items`)
             .post({ fields });
     }
 
-    async updateItem(listConfig: { id: string, site: string }, itemId: string, fields: any) {
-        const apiPath = `/sites/${listConfig.site}:/lists/${listConfig.id}/items/${itemId}/fields`;
+    async updateItem(listConfig: { id: string, siteRef: string }, itemId: string, fields: any) {
+        const siteId = this.siteIds[listConfig.siteRef];
         return await this.client
-            .api(apiPath)
+            .api(`/sites/${siteId}/lists/${listConfig.id}/items/${itemId}/fields`)
             .patch(fields);
     }
 }
