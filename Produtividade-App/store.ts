@@ -170,8 +170,36 @@ export const useAppState = () => {
             VoltaPrevista: new Date(payload.VoltaPrevista)
         };
         setState(prev => ({ ...prev, cargas: [newItem, ...prev.cargas] }));
+        return newItem;
     } catch (error) {
         console.error("Erro ao criar carga:", error);
+        throw error;
+    }
+  };
+
+  const addCaminhao = async (payload: any) => {
+    if (!graph) return;
+    try {
+        const response = await graph.createItem(LISTS.CAMINHOES, payload);
+        const newItem = { ...payload, id: response.id, CaminhaoId: response.id };
+        setState(prev => ({ ...prev, caminhoes: [...prev.caminhoes, newItem] }));
+        return newItem;
+    } catch (error) {
+        console.error("Erro ao criar caminhão:", error);
+        throw error;
+    }
+  };
+
+  const addMotorista = async (payload: any) => {
+    if (!graph) return;
+    try {
+        const response = await graph.createItem(LISTS.MOTORISTAS, payload);
+        const newItem = { ...payload, id: response.id, MotoristaId: response.id };
+        setState(prev => ({ ...prev, motoristas: [...prev.motoristas, newItem] }));
+        return newItem;
+    } catch (error) {
+        console.error("Erro ao criar motorista:", error);
+        throw error;
     }
   };
 
@@ -219,5 +247,5 @@ export const useAppState = () => {
       setGraph(null);
   };
 
-  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addCarga, updateCarga, deletePlanta, deleteCaminhao, deleteUsuario, deleteMotorista, setCurrentUser, logout };
+  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addCarga, addCaminhao, addMotorista, updateCarga, deletePlanta, deleteCaminhao, deleteUsuario, deleteMotorista, setCurrentUser, logout };
 };

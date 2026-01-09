@@ -15,7 +15,8 @@
     "recharts": "^3.6.0",
     "date-fns": "^4.1.0",
     "@azure/msal-browser": "^3.10.0",
-    "@microsoft/microsoft-graph-client": "^3.0.7"
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
