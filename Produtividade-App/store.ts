@@ -110,8 +110,9 @@ export const useAppState = () => {
   const addPlanta = async (payload: any) => {
     if (!graph) return;
     try {
-        const response = await graph.createItem(LISTS.PLANTAS, payload);
-        const newItem = { ...payload, id: response.id };
+        const fields = { ...payload, Title: payload.NomedaUnidade };
+        const response = await graph.createItem(LISTS.PLANTAS, fields);
+        const newItem = { ...fields, id: response.id };
         setState(prev => ({ ...prev, plantas: [...prev.plantas, newItem] }));
         return newItem;
     } catch (error) {
@@ -123,8 +124,14 @@ export const useAppState = () => {
   const addUsuario = async (payload: any) => {
     if (!graph) return;
     try {
-        const response = await graph.createItem(LISTS.USUARIOS, payload);
-        const newItem = { ...payload, id: response.id };
+        // Remove PlantaId se for Admin e estiver vazio para evitar erros de validação no SP
+        const cleanPayload = { ...payload };
+        if (cleanPayload.NivelAcesso === 'Admin' && !cleanPayload.PlantaId) {
+            delete cleanPayload.PlantaId;
+        }
+        const fields = { ...cleanPayload, Title: payload.NomeCompleto };
+        const response = await graph.createItem(LISTS.USUARIOS, fields);
+        const newItem = { ...fields, id: response.id };
         setState(prev => ({ ...prev, usuarios: [...prev.usuarios, newItem] }));
         return newItem;
     } catch (error) {
@@ -180,15 +187,18 @@ export const useAppState = () => {
   const addCarga = async (payload: any) => {
     if (!graph) return;
     try {
-        const response = await graph.createItem(LISTS.CARGAS, {
+        const caminhao = state.caminhoes.find(c => c.CaminhaoId === payload.CaminhaoId);
+        const fields = {
             ...payload,
+            Title: caminhao?.Placa || 'Nova Carga',
             StatusCarga: 'ATIVA',
             DataCriacao: new Date().toISOString(),
             DataInicio: payload.DataInicio.toISOString(),
             VoltaPrevista: payload.VoltaPrevista.toISOString()
-        });
+        };
+        const response = await graph.createItem(LISTS.CARGAS, fields);
         const newItem = { 
-            ...payload, 
+            ...fields, 
             CargaId: response.id, 
             DataCriacao: new Date(), 
             StatusCarga: 'ATIVA' as const,
@@ -206,8 +216,9 @@ export const useAppState = () => {
   const addCaminhao = async (payload: any) => {
     if (!graph) return;
     try {
-        const response = await graph.createItem(LISTS.CAMINHOES, payload);
-        const newItem = { ...payload, id: response.id, CaminhaoId: response.id };
+        const fields = { ...payload, Title: payload.Placa };
+        const response = await graph.createItem(LISTS.CAMINHOES, fields);
+        const newItem = { ...fields, id: response.id, CaminhaoId: response.id };
         setState(prev => ({ ...prev, caminhoes: [...prev.caminhoes, newItem] }));
         return newItem;
     } catch (error) {
@@ -219,8 +230,9 @@ export const useAppState = () => {
   const addMotorista = async (payload: any) => {
     if (!graph) return;
     try {
-        const response = await graph.createItem(LISTS.MOTORISTAS, payload);
-        const newItem = { ...payload, id: response.id, MotoristaId: response.id };
+        const fields = { ...payload, Title: payload.NomedoMotorista };
+        const response = await graph.createItem(LISTS.MOTORISTAS, fields);
+        const newItem = { ...fields, id: response.id, MotoristaId: response.id };
         setState(prev => ({ ...prev, motoristas: [...prev.motoristas, newItem] }));
         return newItem;
     } catch (error) {
