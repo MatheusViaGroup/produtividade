@@ -17,18 +17,16 @@ const msalConfig = {
 
 let msalInstance: msal.PublicClientApplication | null = null;
 
-async function getMsal() {
+export async function getMsal() {
     if (!msalInstance) {
         msalInstance = new msal.PublicClientApplication(msalConfig);
         await msalInstance.initialize();
+        // Crucial: Processa o retorno de qualquer redirecionamento e limpa a URL
+        await msalInstance.handleRedirectPromise();
     }
     return msalInstance;
 }
 
-/**
- * Para a API Graph, sites identificados por path devem seguir o formato:
- * hostname:/sites/nome-do-site
- */
 export const SITES = {
     POWERAPPS: "vialacteoscombr.sharepoint.com:/sites/Powerapps",
     PERSONAL: "vialacteoscombr-my.sharepoint.com:/personal/matheus_henrique_viagroup_com_br"
@@ -51,6 +49,11 @@ export class GraphService {
         });
     }
 
+    static async hasActiveAccount() {
+        const msalApp = await getMsal();
+        return msalApp.getAllAccounts().length > 0;
+    }
+
     static async getAccessToken() {
         const msalApp = await getMsal();
         const accounts = msalApp.getAllAccounts();
@@ -70,12 +73,7 @@ export class GraphService {
         }
     }
 
-    /**
-     * A sintaxe correta para acessar listas via path é:
-     * /sites/{hostname}:/{path}:/lists/{id}/items
-     */
     async getListItems(listConfig: { id: string, site: string }) {
-        // listConfig.site já vem no formato "host:/path"
         const apiPath = `/sites/${listConfig.site}:/lists/${listConfig.id}/items`;
         const response = await this.client
             .api(apiPath)
