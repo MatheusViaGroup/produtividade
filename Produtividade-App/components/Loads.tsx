@@ -152,11 +152,11 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions }) => {
 
               <div className="space-y-4">
                 <div>
-                  <label className={labelClass}>Justificativa Gap (Se > 1h)</label>
+                  <label className={labelClass}>Justificativa Gap (Se &gt; 1h)</label>
                   <textarea value={finishData.just1} onChange={e => setFinishData({...finishData, just1: e.target.value})} className={inputClass} rows={2} placeholder="..." />
                 </div>
                 <div>
-                  <label className={labelClass}>Justificativa Atraso (Se > 30min)</label>
+                  <label className={labelClass}>Justificativa Atraso (Se &gt; 30min)</label>
                   <textarea value={finishData.just2} onChange={e => setFinishData({...finishData, just2: e.target.value})} className={inputClass} rows={2} placeholder="..." />
                 </div>
               </div>
