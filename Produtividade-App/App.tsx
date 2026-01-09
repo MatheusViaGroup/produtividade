@@ -7,6 +7,7 @@ import { Indicators } from './components/Indicators';
 import { LogOut, ShieldCheck, User as UserIcon } from 'lucide-react';
 
 const LOGO_URL = "https://viagroup.com.br/assets/via_group-22fac685.png";
+const MICROSOFT_LOGO = "https://static.vecteezy.com/system/resources/previews/027/127/473/non_2x/microsoft-logo-microsoft-icon-transparent-free-png.png";
 
 const LoginScreen: React.FC<{ onConnect: () => void, loading: boolean }> = ({ onConnect, loading }) => {
     return (
@@ -26,8 +27,8 @@ const LoginScreen: React.FC<{ onConnect: () => void, loading: boolean }> = ({ on
                     >
                         {loading ? "Conectando..." : (
                             <>
-                                <img src="https://authjs.dev/img/providers/microsoft.svg" className="w-5 h-5" alt="MS" />
-                                Entrar com Microsoft 365
+                                <img src={MICROSOFT_LOGO} className="w-6 h-6 object-contain" alt="Microsoft" />
+                                Entrar com Microsoft
                             </>
                         )}
                     </button>
