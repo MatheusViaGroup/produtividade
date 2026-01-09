@@ -26,7 +26,6 @@ export async function getMsal() {
     return msalInstance;
 }
 
-// Configurações originais
 const SITE_PATHS = {
     POWERAPPS: { host: "vialacteoscombr.sharepoint.com", path: "/sites/Powerapps" },
     PERSONAL: { host: "vialacteoscombr-my.sharepoint.com", path: "/personal/matheus_henrique_viagroup_com_br" }
@@ -51,22 +50,25 @@ export class GraphService {
     }
 
     async resolveSites() {
-        try {
-            console.log("Resolvendo IDs de sites SharePoint...");
-            for (const [key, config] of Object.entries(SITE_PATHS)) {
+        console.log("Iniciando resolução de sites...");
+        for (const [key, config] of Object.entries(SITE_PATHS)) {
+            try {
+                // Tenta resolver pelo path absoluto
                 const site = await this.client.api(`/sites/${config.host}:${config.path}`).get();
                 this.siteIds[key] = site.id;
-                console.log(`Site ${key} resolvido: ${site.id}`);
+                console.log(`Site ${key} ok: ${site.id}`);
+            } catch (error: any) {
+                console.warn(`Erro ao resolver site ${key}:`, error.message);
+                // Se falhar o personal, o app ainda pode funcionar para o Admin
+                if (key === 'POWERAPPS') throw error;
             }
-        } catch (error) {
-            console.error("Erro ao resolver sites:", error);
-            throw new Error("Não foi possível localizar os sites do SharePoint. Verifique as URLs e permissões.");
         }
     }
 
     static async hasActiveAccount() {
         const msalApp = await getMsal();
-        return msalApp.getAllAccounts().length > 0;
+        const accounts = msalApp.getAllAccounts();
+        return accounts.length > 0;
     }
 
     static async getAccessToken() {
@@ -83,6 +85,7 @@ export class GraphService {
             const tokenResponse = await msalApp.acquireTokenSilent({ scopes, account: accounts[0] });
             return tokenResponse.accessToken;
         } catch (error) {
+            console.log("Silent token fail, using popup...");
             const loginResponse = await msalApp.acquireTokenPopup({ scopes, account: accounts[0] });
             return loginResponse.accessToken;
         }
@@ -90,17 +93,25 @@ export class GraphService {
 
     async getListItems(listConfig: { id: string, siteRef: string }) {
         const siteId = this.siteIds[listConfig.siteRef];
-        if (!siteId) throw new Error(`Site ID não resolvido para ${listConfig.siteRef}`);
+        if (!siteId) {
+            console.error(`Site ID ausente para ${listConfig.siteRef}`);
+            return [];
+        }
 
-        const response = await this.client
-            .api(`/sites/${siteId}/lists/${listConfig.id}/items`)
-            .expand("fields")
-            .get();
-        
-        return response.value.map((item: any) => ({
-            id: item.id,
-            ...item.fields
-        }));
+        try {
+            const response = await this.client
+                .api(`/sites/${siteId}/lists/${listConfig.id}/items`)
+                .expand("fields")
+                .get();
+            
+            return response.value.map((item: any) => ({
+                id: item.id,
+                ...item.fields
+            }));
+        } catch (error: any) {
+            console.error(`Erro ao ler lista ${listConfig.id}:`, error.message);
+            return [];
+        }
     }
 
     async createItem(listConfig: { id: string, siteRef: string }, fields: any) {

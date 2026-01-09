@@ -15,6 +15,8 @@ export const useAppState = () => {
         currentUser: savedUser ? JSON.parse(savedUser) : null,
       };
   });
+  
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [graph, setGraph] = useState<GraphService | null>(null);
   const [loading, setLoading] = useState(false);
   const isConnecting = useRef(false);
@@ -28,21 +30,20 @@ export const useAppState = () => {
       const token = await GraphService.getAccessToken();
       const service = new GraphService(token);
       
-      // Resolve IDs dos sites primeiro
+      setIsAuthenticated(true);
       await service.resolveSites();
       setGraph(service);
       
-      console.log("Buscando dados das listas...");
+      console.log("Iniciando carga sequencial de dados...");
 
-      const [p, c, u, m, cr] = await Promise.all([
-        service.getListItems(LISTS.PLANTAS),
-        service.getListItems(LISTS.CAMINHOES),
-        service.getListItems(LISTS.USUARIOS),
-        service.getListItems(LISTS.MOTORISTAS),
-        service.getListItems(LISTS.CARGAS),
-      ]);
+      // Carrega cada lista individualmente para não travar o app se uma falhar
+      const p = await service.getListItems(LISTS.PLANTAS);
+      const c = await service.getListItems(LISTS.CAMINHOES);
+      const u = await service.getListItems(LISTS.USUARIOS);
+      const m = await service.getListItems(LISTS.MOTORISTAS);
+      const cr = await service.getListItems(LISTS.CARGAS);
 
-      console.log(`Sucesso: ${u.length} usuários carregados.`);
+      console.log("Dados carregados com sucesso.");
 
       setState(prev => {
           const updatedCurrentUser = prev.currentUser 
@@ -68,7 +69,8 @@ export const useAppState = () => {
       });
     } catch (error: any) {
       console.error("Falha na conexão SharePoint:", error);
-      alert(`Erro: ${error.message || "Falha ao carregar dados do SharePoint. Verifique se você tem acesso aos sites e listas."}`);
+      alert(`Erro de Autenticação/Conexão: ${error.message}`);
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
       isConnecting.current = false;
@@ -78,6 +80,7 @@ export const useAppState = () => {
   useEffect(() => {
     const checkAuth = async () => {
       if (await GraphService.hasActiveAccount()) {
+          setIsAuthenticated(true);
           connectToSharePoint();
       }
     };
@@ -142,6 +145,7 @@ export const useAppState = () => {
 
   const logout = () => {
       localStorage.removeItem('produtividade_user');
+      setIsAuthenticated(false);
       setState({
         plantas: [],
         caminhoes: [],
@@ -153,5 +157,5 @@ export const useAppState = () => {
       setGraph(null);
   };
 
-  return { state, loading, connectToSharePoint, addCarga, updateCarga, setCurrentUser, logout };
+  return { state, loading, isAuthenticated, connectToSharePoint, addCarga, updateCarga, setCurrentUser, logout };
 };
