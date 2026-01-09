@@ -48,9 +48,10 @@ export const useAppState = () => {
           return {
             ...prev,
             plantas: p,
-            caminhoes: c,
+            // Normaliza IDs para garantir que o .find() nos componentes funcione
+            caminhoes: c.map((item: any) => ({ ...item, CaminhaoId: item.id })),
             usuarios: u,
-            motoristas: m,
+            motoristas: m.map((item: any) => ({ ...item, MotoristaId: item.id })),
             currentUser: updatedCurrentUser,
             cargas: cr.map((item: any) => ({
                 ...item,
@@ -124,7 +125,6 @@ export const useAppState = () => {
   const addUsuario = async (payload: any) => {
     if (!graph) return;
     try {
-        // Remove PlantaId se for Admin e estiver vazio para evitar erros de validação no SP
         const cleanPayload = { ...payload };
         if (cleanPayload.NivelAcesso === 'Admin' && !cleanPayload.PlantaId) {
             delete cleanPayload.PlantaId;
