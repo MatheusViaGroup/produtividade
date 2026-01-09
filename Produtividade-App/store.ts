@@ -34,16 +34,11 @@ export const useAppState = () => {
       await service.resolveSites();
       setGraph(service);
       
-      console.log("Iniciando carga sequencial de dados...");
-
-      // Carrega cada lista individualmente para não travar o app se uma falhar
       const p = await service.getListItems(LISTS.PLANTAS);
       const c = await service.getListItems(LISTS.CAMINHOES);
       const u = await service.getListItems(LISTS.USUARIOS);
       const m = await service.getListItems(LISTS.MOTORISTAS);
       const cr = await service.getListItems(LISTS.CARGAS);
-
-      console.log("Dados carregados com sucesso.");
 
       setState(prev => {
           const updatedCurrentUser = prev.currentUser 
@@ -69,7 +64,7 @@ export const useAppState = () => {
       });
     } catch (error: any) {
       console.error("Falha na conexão SharePoint:", error);
-      alert(`Erro de Autenticação/Conexão: ${error.message}`);
+      alert(`Erro: ${error.message}`);
       setIsAuthenticated(false);
     } finally {
       setLoading(false);
@@ -86,6 +81,33 @@ export const useAppState = () => {
     };
     checkAuth();
   }, [connectToSharePoint]);
+
+  const loginLocal = (login: string, pass: string): boolean => {
+      // Usuário Mestre
+      if (login === 'Matheus' && pass === 'admin321123') {
+          const masterUser: Usuario = {
+              id: 'master',
+              NomeCompleto: 'Matheus (Master)',
+              LoginUsuario: 'Matheus',
+              SenhaUsuario: 'admin321123',
+              NivelAcesso: 'Admin'
+          };
+          setCurrentUser(masterUser);
+          return true;
+      }
+
+      // Busca na lista do SharePoint
+      const found = state.usuarios.find(u => 
+        u.LoginUsuario?.toLowerCase() === login.toLowerCase() && 
+        u.SenhaUsuario === pass
+      );
+
+      if (found) {
+          setCurrentUser(found);
+          return true;
+      }
+      return false;
+  };
 
   const addCarga = async (payload: any) => {
     if (!graph) return;
@@ -108,7 +130,6 @@ export const useAppState = () => {
         setState(prev => ({ ...prev, cargas: [newItem, ...prev.cargas] }));
     } catch (error) {
         console.error("Erro ao criar carga:", error);
-        alert("Erro ao salvar carga.");
     }
   };
 
@@ -130,7 +151,6 @@ export const useAppState = () => {
         }));
     } catch (error) {
         console.error("Erro ao atualizar carga:", error);
-        alert("Erro ao finalizar carga.");
     }
   };
 
@@ -157,5 +177,5 @@ export const useAppState = () => {
       setGraph(null);
   };
 
-  return { state, loading, isAuthenticated, connectToSharePoint, addCarga, updateCarga, setCurrentUser, logout };
+  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addCarga, updateCarga, setCurrentUser, logout };
 };
