@@ -19,7 +19,8 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
   const filteredCargas = useMemo(() => {
     return cargas.filter((c: Carga) => {
-      const isFinalizada = c['StatusCarga'] === 'FINALIZADA';
+      // Usando novo status 'CONCLUIDO'
+      const isFinalizada = c['StatusCarga'] === 'CONCLUIDO';
       const isPlantaMatch = selectedPlanta === 'all' || c['PlantaId'] === selectedPlanta;
       const date = c['DataInicio'];
       const isDateMatch = isWithinInterval(date, {
@@ -46,8 +47,6 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
     const totalKm = filteredCargas.reduce((acc, c) => acc + (c.KmReal || 0), 0);
 
-    // Tempo de descarga derivado (estimativa baseada na diferença entre real e tempo médio de viagem)
-    // Usamos 38km/h como base conforme utils/logic.ts
     const totalUnloadMinutes = filteredCargas.reduce((acc, c) => {
         if (!c.ChegadaReal || !c.KmReal) return acc;
         const actualMinutes = differenceInMinutes(c.ChegadaReal, c.DataInicio);
@@ -70,9 +69,8 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
   const chartData = useMemo(() => {
     const monthlyData: Record<string, number> = {};
     
-    // Pegar todas as cargas finalizadas para o gráfico (pode ignorar o filtro de data superior se desejar ver histórico)
     const allFinalized = cargas.filter((c: Carga) => 
-        c['StatusCarga'] === 'FINALIZADA' && (selectedPlanta === 'all' || c['PlantaId'] === selectedPlanta)
+        c['StatusCarga'] === 'CONCLUIDO' && (selectedPlanta === 'all' || c['PlantaId'] === selectedPlanta)
     );
 
     allFinalized.forEach(c => {
@@ -106,7 +104,6 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Filtros */}
       <div className="bg-white p-6 rounded-[2.5rem] border border-blue-50 shadow-sm flex flex-col sm:flex-row gap-4 items-end">
         <div className="flex-1 w-full space-y-1.5">
           <label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Unidade</label>
@@ -150,7 +147,6 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
         </div>
       </div>
 
-      {/* Métricas Principais */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card title="Tempo em Rota" value={metrics.avgRouteTime} unit="min" icon={Clock} color="bg-blue-50 text-blue-600" />
         <Card title="Km Médio" value={metrics.avgKm} unit="km" icon={Gauge} color="bg-indigo-50 text-indigo-600" />
@@ -162,7 +158,6 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
         <Card title="Km Médio Dia" value={metrics.kmPerDay} unit="km/dia" icon={Calendar} color="bg-slate-900 text-white" />
       </div>
 
-      {/* Gráfico */}
       <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-blue-50 shadow-sm">
         <div className="flex justify-between items-center mb-10">
             <h3 className="text-lg font-black text-blue-950 uppercase italic tracking-tighter leading-none">KM Total por Mês</h3>

@@ -1,7 +1,7 @@
 
 export type Role = 'Admin' | 'Operador';
 export type LoadType = 'CHEIA' | 'COMBINADA 2';
-export type LoadStatus = 'ATIVA' | 'FINALIZADA';
+export type LoadStatus = 'PENDENTE' | 'CONCLUIDO';
 
 export interface Planta {
   'NomedaUnidade': string;

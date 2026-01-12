@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState, Usuario, Planta, Caminhao, Motorista, Carga } from './types';
+import { AppState, Usuario, Planta, Caminhao, Motorista, Carga, LoadStatus } from './types';
 import { GraphService, LISTS } from './utils/graphService';
 
 export const useAppState = () => {
@@ -48,19 +48,26 @@ export const useAppState = () => {
           return {
             ...prev,
             plantas: p,
-            // Normaliza IDs para garantir que o .find() nos componentes funcione
             caminhoes: c.map((item: any) => ({ ...item, CaminhaoId: item.id })),
             usuarios: u,
             motoristas: m.map((item: any) => ({ ...item, MotoristaId: item.id })),
             currentUser: updatedCurrentUser,
-            cargas: cr.map((item: any) => ({
-                ...item,
-                CargaId: item.id,
-                DataCriacao: item.DataCriacao ? new Date(item.DataCriacao) : new Date(),
-                DataInicio: item.DataInicio ? new Date(item.DataInicio) : new Date(),
-                VoltaPrevista: item.VoltaPrevista ? new Date(item.VoltaPrevista) : new Date(),
-                ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined
-            }))
+            cargas: cr.map((item: any) => {
+                // Normalização de status legado do SharePoint
+                let status: LoadStatus = 'PENDENTE';
+                if (item.StatusCarga === 'FINALIZADA' || item.StatusCarga === 'CONCLUIDO') status = 'CONCLUIDO';
+                else if (item.StatusCarga === 'ATIVA' || item.StatusCarga === 'PENDENTE') status = 'PENDENTE';
+
+                return {
+                    ...item,
+                    CargaId: item.id,
+                    StatusCarga: status,
+                    DataCriacao: item.DataCriacao ? new Date(item.DataCriacao) : new Date(),
+                    DataInicio: item.DataInicio ? new Date(item.DataInicio) : new Date(),
+                    VoltaPrevista: item.VoltaPrevista ? new Date(item.VoltaPrevista) : new Date(),
+                    ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined
+                };
+            })
           };
       });
     } catch (error: any) {
@@ -191,7 +198,7 @@ export const useAppState = () => {
         const fields = {
             ...payload,
             Title: caminhao?.Placa || 'Nova Carga',
-            StatusCarga: 'ATIVA',
+            StatusCarga: 'PENDENTE',
             DataCriacao: new Date().toISOString(),
             DataInicio: payload.DataInicio.toISOString(),
             VoltaPrevista: payload.VoltaPrevista.toISOString()
@@ -201,7 +208,7 @@ export const useAppState = () => {
             ...fields, 
             CargaId: response.id, 
             DataCriacao: new Date(), 
-            StatusCarga: 'ATIVA' as const,
+            StatusCarga: 'PENDENTE' as const,
             DataInicio: new Date(payload.DataInicio),
             VoltaPrevista: new Date(payload.VoltaPrevista)
         };
@@ -247,7 +254,7 @@ export const useAppState = () => {
         await graph.updateItem(LISTS.CARGAS, updated['CargaId'], {
             KmReal: updated['KmReal'],
             ChegadaReal: updated['ChegadaReal']?.toISOString(),
-            StatusCarga: 'FINALIZADA',
+            StatusCarga: 'CONCLUIDO',
             Diff1_Gap: updated['Diff1_Gap'],
             Diff1_Jusitificativa: updated['Diff1_Jusitificativa'],
             "Diff2_x002e_Atraso": updated['Diff2.Atraso'],
@@ -255,7 +262,7 @@ export const useAppState = () => {
         });
         setState(prev => ({
             ...prev,
-            cargas: prev.cargas.map(c => c['CargaId'] === updated['CargaId'] ? updated : c)
+            cargas: prev.cargas.map(c => c['CargaId'] === updated['CargaId'] ? { ...updated, StatusCarga: 'CONCLUIDO' as const } : c)
         }));
     } catch (error) {
         console.error("Erro ao atualizar carga:", error);

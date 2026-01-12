@@ -16,7 +16,8 @@ export const calculateExpectedReturn = (dataInicio: Date, kmPrevisto: number, ti
 
 export const findPreviousLoadArrival = (caminhaoId: string, currentStart: Date, allCargas: Carga[]): Date | null => {
   const previousLoads = allCargas
-    .filter(c => c['CaminhaoId'] === caminhaoId && c['StatusCarga'] === 'FINALIZADA' && c['ChegadaReal'] && c['ChegadaReal'] < currentStart)
+    // Updated 'FINALIZADA' to 'CONCLUIDO' to match the LoadStatus type definition
+    .filter(c => c['CaminhaoId'] === caminhaoId && c['StatusCarga'] === 'CONCLUIDO' && c['ChegadaReal'] && c['ChegadaReal'] < currentStart)
     .sort((a, b) => b['ChegadaReal']!.getTime() - a['ChegadaReal']!.getTime());
   
   return previousLoads.length > 0 ? previousLoads[0]['ChegadaReal']! : null;

@@ -18,7 +18,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const [filter, setFilter] = useState<'ATIVAS' | 'HISTORICO'>('ATIVAS');
   const [now, setNow] = useState(new Date());
 
-  // Atualiza o relógio interno para checagem de atrasos em tempo real
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30000);
     return () => clearInterval(timer);
@@ -32,7 +31,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
   const visibleCargas = (state.cargas || []).filter((c: Carga) => {
     const isUserPlant = !userPlantId || c['PlantaId'] === userPlantId;
-    const isStatusMatch = filter === 'ATIVAS' ? c['StatusCarga'] === 'ATIVA' : c['StatusCarga'] === 'FINALIZADA';
+    // Filtro agora baseado nos novos status literais
+    const isStatusMatch = filter === 'ATIVAS' ? c['StatusCarga'] === 'PENDENTE' : c['StatusCarga'] === 'CONCLUIDO';
     return isUserPlant && isStatusMatch;
   }).sort((a: Carga, b: Carga) => {
     if (filter === 'ATIVAS') return b['DataCriacao'].getTime() - a['DataCriacao'].getTime();
@@ -114,7 +114,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     
     actions.updateCarga({
       ...carga,
-      'StatusCarga': 'FINALIZADA', 
+      'StatusCarga': 'CONCLUIDO', 
       'KmReal': finishData.kmReal, 
       'ChegadaReal': chegadaRealDate,
       'Diff1_Gap': finishData.diff1, 
@@ -157,14 +157,13 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {visibleCargas.map((carga: Carga) => {
           const hasDivergence = (carga.Diff1_Gap || 0) > 60 || (carga['Diff2.Atraso'] || 0) > 30;
-          const isLate = carga.StatusCarga === 'ATIVA' && isAfter(now, carga.VoltaPrevista);
+          const isLate = carga.StatusCarga === 'PENDENTE' && isAfter(now, carga.VoltaPrevista);
           const isHistory = filter === 'HISTORICO';
           const totalRouteMinutes = carga.ChegadaReal ? differenceInMinutes(carga.ChegadaReal, carga.DataInicio) : 0;
           
           return (
             <div key={carga['CargaId']} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm p-6 sm:p-7 space-y-5 hover:shadow-xl transition-all duration-300 relative ${isLate ? 'border-orange-200 bg-orange-50/10' : isHistory ? (hasDivergence ? 'border-red-200 bg-red-50/5' : 'border-emerald-100 bg-emerald-50/5') : 'border-blue-50'}`}>
                
-               {/* Barra lateral de status no histórico */}
                {isHistory && (
                    <div className={`absolute left-0 top-0 bottom-0 w-2 ${hasDivergence ? 'bg-red-500' : 'bg-emerald-500'}`}></div>
                )}
@@ -177,11 +176,12 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                     {isHistory ? (
                         <div className={`flex items-center gap-1.5 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ${hasDivergence ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
                             {hasDivergence ? <AlertTriangle size={10} /> : <CheckCircle2 size={10} />}
-                            {hasDivergence ? 'Com Pendência' : 'Concluída OK'}
+                            {hasDivergence ? 'PENDÊNCIA REGISTRADA' : 'CONCLUÍDO'}
                         </div>
-                    ) : isLate && (
-                        <div className="flex items-center gap-1.5 text-[8px] font-black uppercase px-3 py-1.5 rounded-full bg-orange-100 text-orange-700">
-                            <Clock size={10} /> Em Atraso
+                    ) : (
+                        <div className={`flex items-center gap-1.5 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ${isLate ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {isLate ? <Clock size={10} /> : <Navigation size={10} />}
+                            {isLate ? 'EM ATRASO' : 'PENDENTE (EM ROTA)'}
                         </div>
                     )}
                   </div>
@@ -242,18 +242,18 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                       </div>
                       <p className="text-sm font-black text-gray-800">{format(carga['DataInicio'], 'dd/MM HH:mm')}</p>
                   </div>
-                  <div className={`p-4 rounded-2xl ${carga.StatusCarga === 'FINALIZADA' ? 'bg-slate-100' : 'bg-blue-600/5'}`}>
-                      <div className={`flex items-center gap-1.5 mb-1 ${carga.StatusCarga === 'FINALIZADA' ? 'text-gray-400' : 'text-blue-600'} opacity-40`}>
+                  <div className={`p-4 rounded-2xl ${carga.StatusCarga === 'CONCLUIDO' ? 'bg-slate-100' : 'bg-blue-600/5'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${carga.StatusCarga === 'CONCLUIDO' ? 'text-gray-400' : 'text-blue-600'} opacity-40`}>
                           <Gauge size={10} />
-                          <span className="text-[8px] font-black uppercase italic">{carga.StatusCarga === 'FINALIZADA' ? 'Chegada Real' : 'Volta Prev.'}</span>
+                          <span className="text-[8px] font-black uppercase italic">{carga.StatusCarga === 'CONCLUIDO' ? 'Chegada Real' : 'Volta Prev.'}</span>
                       </div>
-                      <p className={`text-sm font-black ${carga.StatusCarga === 'FINALIZADA' ? 'text-gray-600' : isLate ? 'text-orange-600' : 'text-blue-700'} italic`}>
-                          {carga.StatusCarga === 'FINALIZADA' && carga.ChegadaReal ? format(carga.ChegadaReal, 'dd/MM HH:mm') : format(carga.VoltaPrevista, 'dd/MM HH:mm')}
+                      <p className={`text-sm font-black ${carga.StatusCarga === 'CONCLUIDO' ? 'text-gray-600' : isLate ? 'text-orange-600' : 'text-blue-700'} italic`}>
+                          {carga.StatusCarga === 'CONCLUIDO' && carga.ChegadaReal ? format(carga.ChegadaReal, 'dd/MM HH:mm') : format(carga.VoltaPrevista, 'dd/MM HH:mm')}
                       </p>
                   </div>
                </div>
 
-               {carga['StatusCarga'] === 'ATIVA' && (
+               {carga['StatusCarga'] === 'PENDENTE' && (
                   <button onClick={() => setIsFinishing(carga['CargaId'])} className="w-full bg-blue-900 text-white flex items-center justify-center gap-2 text-[10px] font-black uppercase border border-blue-900 py-4 rounded-2xl hover:bg-black active:scale-95 transition-all shadow-lg shadow-blue-100">
                     Encerrar Rota <ArrowRight size={14} />
                   </button>
