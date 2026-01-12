@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Caminhao, Motorista, LoadType, Carga, Planta } from '../types';
 import { calculateExpectedReturn, findPreviousLoadArrival } from '../utils/logic';
-import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet } from 'lucide-react';
+import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import { format, differenceInMinutes } from 'date-fns';
 
 interface LoadsProps {
@@ -42,7 +42,29 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     kmReal: 0,
     just1: '',
     just2: '',
+    diff1: 0,
+    diff2: 0
   });
+
+  // Atualiza cálculos de diferença quando os dados de finalização mudam
+  useEffect(() => {
+    if (isFinishing) {
+        const carga = state.cargas.find((c: any) => c['CargaId'] === isFinishing);
+        if (carga) {
+            const chegadaRealDate = new Date(finishData.chegadaReal);
+            const prevArrival = findPreviousLoadArrival(carga['CaminhaoId'], carga['DataInicio'], state.cargas);
+            
+            let d1 = 0; 
+            if (prevArrival) { 
+                d1 = differenceInMinutes(carga['DataInicio'], prevArrival); 
+            }
+            
+            const d2 = differenceInMinutes(chegadaRealDate, carga['VoltaPrevista']);
+            
+            setFinishData(prev => ({ ...prev, diff1: d1, diff2: d2 }));
+        }
+    }
+  }, [finishData.chegadaReal, isFinishing, state.cargas]);
 
   const handleCreateLoad = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,20 +87,41 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     e.preventDefault();
     const carga = state.cargas.find((c: any) => c['CargaId'] === isFinishing);
     if (!carga) return;
+
+    // VALIDAÇÃO DE REGRA DE NEGÓCIO
+    const gapNecessitaJustificativa = finishData.diff1 > 60; // > 1 hora
+    const atrasoNecessitaJustificativa = finishData.diff2 > 30; // > 30 minutos
+
+    if (gapNecessitaJustificativa && !finishData.just1.trim()) {
+        alert("O Gap entre viagens é superior a 1 hora. Por favor, insira uma justificativa.");
+        return;
+    }
+
+    if (atrasoNecessitaJustificativa && !finishData.just2.trim()) {
+        alert("O atraso da viagem é superior a 30 minutos. Por favor, insira uma justificativa.");
+        return;
+    }
+
     const chegadaRealDate = new Date(finishData.chegadaReal);
-    const prevArrival = findPreviousLoadArrival(carga['CaminhaoId'], carga['DataInicio'], state.cargas);
-    let diff1 = 0; if (prevArrival) { diff1 = differenceInMinutes(carga['DataInicio'], prevArrival); }
-    const diff2 = differenceInMinutes(chegadaRealDate, carga['VoltaPrevista']);
+    
     actions.updateCarga({
       ...carga,
-      'StatusCarga': 'FINALIZADA', 'KmReal': finishData.kmReal, 'ChegadaReal': chegadaRealDate,
-      'Diff1_Gap': diff1, 'Diff1_Jusitificativa': finishData.just1, 'Diff2.Atraso': diff2, 'Diff2.Justificativa': finishData.just2,
+      'StatusCarga': 'FINALIZADA', 
+      'KmReal': finishData.kmReal, 
+      'ChegadaReal': chegadaRealDate,
+      'Diff1_Gap': finishData.diff1, 
+      'Diff1_Jusitificativa': finishData.just1, 
+      'Diff2.Atraso': finishData.diff2, 
+      'Diff2.Justificativa': finishData.just2,
     });
     setIsFinishing(null);
   };
 
   const inputClass = "w-full border border-blue-100 rounded-xl p-4 bg-gray-50 text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-base";
   const labelClass = "text-[10px] font-black text-blue-900 uppercase tracking-[0.15em] mb-1.5 ml-1 block opacity-50";
+
+  const gapError = finishData.diff1 > 60 && !finishData.just1.trim();
+  const delayError = finishData.diff2 > 30 && !finishData.just2.trim();
 
   return (
     <div className="space-y-6">
@@ -173,17 +216,60 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
             
             {isFinishing ? (
                 <>
-                <h3 className="text-2xl font-black text-blue-950 mb-8 uppercase italic leading-none">Encerrar Rota</h3>
+                <div className="flex justify-between items-center mb-8">
+                    <h3 className="text-2xl font-black text-blue-950 uppercase italic leading-none">Encerrar Rota</h3>
+                    <div className="flex flex-col items-end">
+                        {finishData.diff1 > 60 && <span className="text-[8px] font-black bg-red-100 text-red-600 px-2 py-1 rounded-full uppercase mb-1">Gap: {finishData.diff1}m</span>}
+                        {finishData.diff2 > 30 && <span className="text-[8px] font-black bg-orange-100 text-orange-600 px-2 py-1 rounded-full uppercase">Atraso: {finishData.diff2}m</span>}
+                    </div>
+                </div>
                 <form onSubmit={handleFinishLoad} className="space-y-6 pb-6 sm:pb-0">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div><label className={labelClass}>Km Real Final</label><input required type="number" value={finishData.kmReal} onChange={e => setFinishData({...finishData, kmReal: Number(e.target.value)})} className={inputClass} /></div>
                         <div><label className={labelClass}>Horário Chegada</label><input required type="datetime-local" value={finishData.chegadaReal} onChange={e => setFinishData({...finishData, chegadaReal: e.target.value})} className={inputClass} /></div>
                     </div>
                     <div className="space-y-4">
-                        <div><label className={labelClass}>Justificativa Gap (Se &gt; 1h)</label><textarea value={finishData.just1} onChange={e => setFinishData({...finishData, just1: e.target.value})} className={inputClass} rows={2} /></div>
-                        <div><label className={labelClass}>Justificativa Atraso (Se &gt; 30min)</label><textarea value={finishData.just2} onChange={e => setFinishData({...finishData, just2: e.target.value})} className={inputClass} rows={2} /></div>
+                        <div>
+                            <label className={`${labelClass} flex justify-between`}>
+                                Justificativa Gap (Se > 1h)
+                                {finishData.diff1 > 60 && <span className="text-red-500 font-black italic">OBRIGATÓRIO</span>}
+                            </label>
+                            <textarea 
+                                value={finishData.just1} 
+                                onChange={e => setFinishData({...finishData, just1: e.target.value})} 
+                                className={`${inputClass} ${gapError ? 'border-red-500 ring-2 ring-red-100' : ''}`} 
+                                rows={2} 
+                                placeholder={finishData.diff1 > 60 ? "Explique o motivo do gap superior a 1h..." : ""}
+                            />
+                        </div>
+                        <div>
+                            <label className={`${labelClass} flex justify-between`}>
+                                Justificativa Atraso (Se > 30min)
+                                {finishData.diff2 > 30 && <span className="text-orange-500 font-black italic">OBRIGATÓRIO</span>}
+                            </label>
+                            <textarea 
+                                value={finishData.just2} 
+                                onChange={e => setFinishData({...finishData, just2: e.target.value})} 
+                                className={`${inputClass} ${delayError ? 'border-orange-500 ring-2 ring-orange-100' : ''}`} 
+                                rows={2} 
+                                placeholder={finishData.diff2 > 30 ? "Explique o motivo do atraso superior a 30min..." : ""}
+                            />
+                        </div>
                     </div>
-                    <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-blue-100 active:scale-95 transition-all">Finalizar Agora</button>
+                    
+                    {(gapError || delayError) && (
+                        <div className="flex items-center gap-2 bg-red-50 p-4 rounded-2xl text-red-600">
+                            <AlertCircle size={18} />
+                            <p className="text-[10px] font-black uppercase tracking-tight leading-tight">Preencha as justificativas obrigatórias para finalizar.</p>
+                        </div>
+                    )}
+
+                    <button 
+                        type="submit" 
+                        className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-blue-100 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                        Finalizar Agora
+                    </button>
                 </form>
                 </>
             ) : (

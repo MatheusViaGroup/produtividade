@@ -227,7 +227,7 @@ const ImportTab = ({ state, actions, initialType }: any) => {
 
                 <div className="mt-10 space-y-3 max-h-[300px] overflow-y-auto no-scrollbar pb-8">
                     {results.map((res, idx) => (
-                        <div key={idx} className={`flex items-center gap-3 p-4 rounded-2xl text-[10px] font-black uppercase tracking-wider border ${res.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                        <div key={idx} className={`flex items-center gap-3 p-4 rounded-2xl text-[10px] font-black uppercase tracking-wider border ${res.type === 'success' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
                             {res.type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                             {res.msg}
                         </div>
@@ -419,7 +419,7 @@ export const Admin: React.FC<AdminProps> = ({ state, actions, activeSubTab, setA
             {['usuarios', 'plantas', 'caminhoes', 'motoristas'].map((t: any) => (
                <button key={t} onClick={() => setActiveSubTab(t)} className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeSubTab === t ? 'bg-blue-600 lg:bg-white text-white lg:text-blue-700 shadow-sm' : 'text-blue-800/40'}`}>{t}</button>
             ))}
-            <button onClick={() => setActiveSubTab('importar')} className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeSubTab === 'importar' ? 'bg-emerald-600 text-white shadow-sm' : 'text-emerald-700 font-bold'}`}>
+            <button onClick={() => setActiveSubTab('importar')} className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeSubTab === 'importar' ? 'bg-blue-600 text-white shadow-sm' : 'text-blue-700 font-bold'}`}>
                <FileSpreadsheet size={14} /> Importar
             </button>
          </div>
@@ -433,12 +433,12 @@ export const Admin: React.FC<AdminProps> = ({ state, actions, activeSubTab, setA
               </div>
               
               {activeSubTab === 'caminhoes' && (
-                  <button onClick={() => openImport('CAMINHOES')} className="bg-emerald-50 text-emerald-700 px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-emerald-100 transition-all shadow-sm border border-emerald-100">
+                  <button onClick={() => openImport('CAMINHOES')} className="bg-blue-50 text-blue-700 px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-blue-100 transition-all shadow-sm border border-blue-100">
                       <FileSpreadsheet size={16} /> Importar Excel
                   </button>
               )}
               {activeSubTab === 'motoristas' && (
-                  <button onClick={() => openImport('MOTORISTAS')} className="bg-emerald-50 text-emerald-700 px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-emerald-100 transition-all shadow-sm border border-emerald-100">
+                  <button onClick={() => openImport('MOTORISTAS')} className="bg-blue-50 text-blue-700 px-6 py-4 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-blue-100 transition-all shadow-sm border border-blue-100">
                       <FileSpreadsheet size={16} /> Importar Excel
                   </button>
               )}

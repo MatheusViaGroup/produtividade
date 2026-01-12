@@ -47,10 +47,10 @@ const LoginApp: React.FC<{ onLogin: (u: string, p: string) => boolean, onBack: (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
             <div className="bg-white p-8 sm:p-12 rounded-[2.5rem] shadow-xl max-w-md w-full text-center">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-white mb-6 shadow-xl shadow-blue-100">
-                        <KeyRound size={32} />
+                    <div className="w-full flex items-center justify-center mb-6">
+                        <img src={LOGO_URL} alt="Via Group" className="h-12 sm:h-16 object-contain" />
                     </div>
-                    <h2 className="text-2xl sm:text-3xl font-black uppercase italic text-blue-950">Acesso Interno</h2>
+                    <h2 className="text-2xl sm:text-3xl font-black uppercase italic text-blue-950 leading-none">Acesso Interno</h2>
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Entre com seus dados do sistema</p>
                 </div>
 
