@@ -44,13 +44,13 @@ export interface Carga {
   'VoltaPrevista': Date;
   'StatusCarga': LoadStatus;
   
-  // Finalização
+  // Finalização - Nomes ajustados para bater com SharePoint
   'KmReal'?: number;
   'ChegadaReal'?: Date;
   'Diff1_Gap'?: number;
-  'Diff1_Jusitificativa'?: string;
-  'Diff2.Atraso'?: number;
-  'Diff2.Justificativa'?: string;
+  'Diff1_Justificativa'?: string;
+  'Diff2_Atraso'?: number;
+  'Diff2_Justificativa'?: string;
 }
 
 export interface AppState {

@@ -31,7 +31,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
   const visibleCargas = (state.cargas || []).filter((c: Carga) => {
     const isUserPlant = !userPlantId || c['PlantaId'] === userPlantId;
-    // Filtro agora baseado nos novos status literais
     const isStatusMatch = filter === 'ATIVAS' ? c['StatusCarga'] === 'PENDENTE' : c['StatusCarga'] === 'CONCLUIDO';
     return isUserPlant && isStatusMatch;
   }).sort((a: Carga, b: Carga) => {
@@ -118,9 +117,9 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       'KmReal': finishData.kmReal, 
       'ChegadaReal': chegadaRealDate,
       'Diff1_Gap': finishData.diff1, 
-      'Diff1_Jusitificativa': finishData.just1, 
-      'Diff2.Atraso': finishData.diff2, 
-      'Diff2.Justificativa': finishData.just2,
+      'Diff1_Justificativa': finishData.just1, 
+      'Diff2_Atraso': finishData.diff2, 
+      'Diff2_Justificativa': finishData.just2,
     });
     setIsFinishing(null);
   };
@@ -156,7 +155,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {visibleCargas.map((carga: Carga) => {
-          const hasDivergence = (carga.Diff1_Gap || 0) > 60 || (carga['Diff2.Atraso'] || 0) > 30;
+          const hasDivergence = (carga.Diff1_Gap || 0) > 60 || (carga.Diff2_Atraso || 0) > 30;
           const isLate = carga.StatusCarga === 'PENDENTE' && isAfter(now, carga.VoltaPrevista);
           const isHistory = filter === 'HISTORICO';
           const totalRouteMinutes = carga.ChegadaReal ? differenceInMinutes(carga.ChegadaReal, carga.DataInicio) : 0;
@@ -229,7 +228,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                        <p className="text-[8px] font-black text-red-600 uppercase flex items-center gap-1"><Info size={8} /> Justificativas pendentes:</p>
                        <div className="flex flex-wrap gap-2">
                            {carga.Diff1_Gap && carga.Diff1_Gap > 60 && <span className="text-[7px] font-black bg-red-200 text-red-800 px-1.5 py-0.5 rounded uppercase">Gap: {carga.Diff1_Gap}m</span>}
-                           {carga['Diff2.Atraso'] && carga['Diff2.Atraso'] > 30 && <span className="text-[7px] font-black bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded uppercase">Atraso: {carga['Diff2.Atraso']}m</span>}
+                           {carga.Diff2_Atraso && carga.Diff2_Atraso > 30 && <span className="text-[7px] font-black bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded uppercase">Atraso: {carga.Diff2_Atraso}m</span>}
                        </div>
                    </div>
                )}

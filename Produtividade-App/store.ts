@@ -53,10 +53,10 @@ export const useAppState = () => {
             motoristas: m.map((item: any) => ({ ...item, MotoristaId: item.id })),
             currentUser: updatedCurrentUser,
             cargas: cr.map((item: any) => {
-                // Normalização de status legado do SharePoint
                 let status: LoadStatus = 'PENDENTE';
-                if (item.StatusCarga === 'FINALIZADA' || item.StatusCarga === 'CONCLUIDO') status = 'CONCLUIDO';
-                else if (item.StatusCarga === 'ATIVA' || item.StatusCarga === 'PENDENTE') status = 'PENDENTE';
+                const s = String(item.StatusCarga || '').toUpperCase();
+                if (s === 'FINALIZADA' || s === 'CONCLUIDO') status = 'CONCLUIDO';
+                else if (s === 'ATIVA' || s === 'PENDENTE') status = 'PENDENTE';
 
                 return {
                     ...item,
@@ -65,7 +65,11 @@ export const useAppState = () => {
                     DataCriacao: item.DataCriacao ? new Date(item.DataCriacao) : new Date(),
                     DataInicio: item.DataInicio ? new Date(item.DataInicio) : new Date(),
                     VoltaPrevista: item.VoltaPrevista ? new Date(item.VoltaPrevista) : new Date(),
-                    ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined
+                    ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined,
+                    // Garante que o mapeamento interno reflita as colunas do SharePoint
+                    Diff1_Justificativa: item.Diff1_Justificativa,
+                    Diff2_Atraso: item.Diff2_Atraso,
+                    Diff2_Justificativa: item.Diff2_Justificativa
                 };
             })
           };
@@ -251,21 +255,26 @@ export const useAppState = () => {
   const updateCarga = async (updated: Carga) => {
     if (!graph) return;
     try {
-        await graph.updateItem(LISTS.CARGAS, updated['CargaId'], {
+        // Mapeamento direto com as colunas do SharePoint conforme o screenshot do PowerApps
+        const sharePointFields = {
             KmReal: updated['KmReal'],
             ChegadaReal: updated['ChegadaReal']?.toISOString(),
             StatusCarga: 'CONCLUIDO',
             Diff1_Gap: updated['Diff1_Gap'],
-            Diff1_Jusitificativa: updated['Diff1_Jusitificativa'],
-            "Diff2_x002e_Atraso": updated['Diff2.Atraso'],
-            "Diff2_x002e_Justificativa": updated['Diff2.Justificativa']
-        });
+            Diff1_Justificativa: updated['Diff1_Justificativa'],
+            Diff2_Atraso: updated['Diff2_Atraso'],
+            Diff2_Justificativa: updated['Diff2_Justificativa']
+        };
+
+        await graph.updateItem(LISTS.CARGAS, updated['CargaId'], sharePointFields);
+        
         setState(prev => ({
             ...prev,
             cargas: prev.cargas.map(c => c['CargaId'] === updated['CargaId'] ? { ...updated, StatusCarga: 'CONCLUIDO' as const } : c)
         }));
     } catch (error) {
         console.error("Erro ao atualizar carga:", error);
+        alert("Erro ao salvar finalização no SharePoint. Verifique as permissões.");
     }
   };
 
