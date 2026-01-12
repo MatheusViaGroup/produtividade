@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Caminhao, Motorista, LoadType, Carga, Planta } from '../types';
 import { calculateExpectedReturn, findPreviousLoadArrival } from '../utils/logic';
-import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet, AlertCircle } from 'lucide-react';
-import { format, differenceInMinutes } from 'date-fns';
+import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import { format, differenceInMinutes, isAfter } from 'date-fns';
 
 interface LoadsProps {
   state: any;
@@ -16,6 +16,13 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFinishing, setIsFinishing] = useState<string | null>(null);
   const [filter, setFilter] = useState<'ATIVAS' | 'HISTORICO'>('ATIVAS');
+  const [now, setNow] = useState(new Date());
+
+  // Atualiza o relógio interno para checagem de atrasos em tempo real
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const currentUser = state.currentUser;
   const userPlantId = currentUser?.['PlantaId'];
@@ -27,7 +34,10 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     const isUserPlant = !userPlantId || c['PlantaId'] === userPlantId;
     const isStatusMatch = filter === 'ATIVAS' ? c['StatusCarga'] === 'ATIVA' : c['StatusCarga'] === 'FINALIZADA';
     return isUserPlant && isStatusMatch;
-  }).sort((a: Carga, b: Carga) => b['DataCriacao'].getTime() - a['DataCriacao'].getTime());
+  }).sort((a: Carga, b: Carga) => {
+    if (filter === 'ATIVAS') return b['DataCriacao'].getTime() - a['DataCriacao'].getTime();
+    return (b['ChegadaReal']?.getTime() || 0) - (a['ChegadaReal']?.getTime() || 0);
+  });
 
   const [formData, setFormData] = useState({
     caminhaoId: '',
@@ -46,7 +56,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     diff2: 0
   });
 
-  // Atualiza cálculos de diferença quando os dados de finalização mudam
   useEffect(() => {
     if (isFinishing) {
         const carga = state.cargas.find((c: any) => c['CargaId'] === isFinishing);
@@ -88,9 +97,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     const carga = state.cargas.find((c: any) => c['CargaId'] === isFinishing);
     if (!carga) return;
 
-    // VALIDAÇÃO DE REGRA DE NEGÓCIO
-    const gapNecessitaJustificativa = finishData.diff1 > 60; // > 1 hora
-    const atrasoNecessitaJustificativa = finishData.diff2 > 30; // > 30 minutos
+    const gapNecessitaJustificativa = finishData.diff1 > 60;
+    const atrasoNecessitaJustificativa = finishData.diff2 > 30;
 
     if (gapNecessitaJustificativa && !finishData.just1.trim()) {
         alert("O Gap entre viagens é superior a 1 hora. Por favor, insira uma justificativa.");
@@ -143,62 +151,81 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-        {visibleCargas.map((carga: Carga) => (
-          <div key={carga['CargaId']} className="bg-white border border-blue-50 rounded-[2rem] overflow-hidden shadow-sm p-6 sm:p-7 space-y-5 hover:shadow-xl transition-all duration-300">
-             <div className="flex justify-between items-start">
-                <div className="bg-blue-50 text-blue-700 text-[9px] font-black tracking-widest px-3 py-1.5 rounded-full uppercase leading-none">
-                    {carga['TipoCarga']}
-                </div>
-                <div className="text-right">
-                    <p className="text-[9px] font-black text-blue-800/30 uppercase leading-none">Criada em</p>
-                    <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">{format(carga['DataCriacao'], 'dd/MM HH:mm')}</p>
-                </div>
-             </div>
-
-             <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                    <div className="bg-slate-100 p-3 rounded-2xl text-slate-600"><Truck size={24} /></div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-xl font-black text-gray-900 italic leading-none truncate uppercase tracking-tighter">
-                            {state.caminhoes.find((c: any) => c['CaminhaoId'] === carga['CaminhaoId'])?.['Placa'] || '---'}
-                        </p>
-                        <div className="flex items-center gap-1 mt-1 text-blue-600 opacity-60">
-                            <MapPin size={10} />
-                            <p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => p['PlantaId'] === carga['PlantaId'])?.['NomedaUnidade']}</p>
+        {visibleCargas.map((carga: Carga) => {
+          const hasDivergence = (carga.Diff1_Gap || 0) > 60 || (carga['Diff2.Atraso'] || 0) > 30;
+          const isLate = carga.StatusCarga === 'ATIVA' && isAfter(now, carga.VoltaPrevista);
+          
+          return (
+            <div key={carga['CargaId']} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm p-6 sm:p-7 space-y-5 hover:shadow-xl transition-all duration-300 ${isLate ? 'border-orange-200 bg-orange-50/10' : 'border-blue-50'}`}>
+               <div className="flex justify-between items-start">
+                  <div className="flex flex-col gap-1">
+                    <div className="bg-blue-50 text-blue-700 text-[9px] font-black tracking-widest px-3 py-1.5 rounded-full uppercase leading-none w-fit">
+                        {carga['TipoCarga']}
+                    </div>
+                    {filter === 'HISTORICO' ? (
+                        <div className={`flex items-center gap-1 text-[8px] font-black uppercase px-2 py-1 rounded-full ${hasDivergence ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                            {hasDivergence ? <AlertTriangle size={10} /> : <CheckCircle2 size={10} />}
+                            {hasDivergence ? 'Com Divergência' : 'Concluída'}
                         </div>
-                    </div>
-                </div>
+                    ) : isLate && (
+                        <div className="flex items-center gap-1 text-[8px] font-black uppercase px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                            <Clock size={10} /> Em Atraso
+                        </div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                      <p className="text-[9px] font-black text-blue-800/30 uppercase leading-none">Criada em</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">{format(carga['DataCriacao'], 'dd/MM HH:mm')}</p>
+                  </div>
+               </div>
 
-                <div className="flex items-center gap-4 bg-slate-50/50 p-4 rounded-2xl">
-                    <div className="bg-white p-2.5 rounded-xl shadow-sm text-gray-400"><User size={18} /></div>
-                    <p className="text-xs font-bold text-gray-700 truncate">{state.motoristas.find((m: any) => m['MotoristaId'] === carga['MotoristaId'])?.['NomedoMotorista'] || 'Motorista'}</p>
-                </div>
-             </div>
+               <div className="space-y-4">
+                  <div className="flex items-center gap-4">
+                      <div className="bg-slate-100 p-3 rounded-2xl text-slate-600"><Truck size={24} /></div>
+                      <div className="flex-1 min-w-0">
+                          <p className="text-xl font-black text-gray-900 italic leading-none truncate uppercase tracking-tighter">
+                              {state.caminhoes.find((c: any) => c['CaminhaoId'] === carga['CaminhaoId'])?.['Placa'] || '---'}
+                          </p>
+                          <div className="flex items-center gap-1 mt-1 text-blue-600 opacity-60">
+                              <MapPin size={10} />
+                              <p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => p['PlantaId'] === carga['PlantaId'])?.['NomedaUnidade']}</p>
+                          </div>
+                      </div>
+                  </div>
 
-             <div className="pt-2 grid grid-cols-2 gap-4">
-                <div className="bg-blue-50/30 p-4 rounded-2xl">
-                    <div className="flex items-center gap-1.5 mb-1 opacity-30">
-                        <Calendar size={10} />
-                        <span className="text-[8px] font-black uppercase">Saída</span>
-                    </div>
-                    <p className="text-sm font-black text-gray-800">{format(carga['DataInicio'], 'dd/MM HH:mm')}</p>
-                </div>
-                <div className="bg-blue-600/5 p-4 rounded-2xl">
-                    <div className="flex items-center gap-1.5 mb-1 text-blue-600 opacity-40">
-                        <Gauge size={10} />
-                        <span className="text-[8px] font-black uppercase italic">Volta Prev.</span>
-                    </div>
-                    <p className="text-sm font-black text-blue-700 italic">{format(carga['VoltaPrevista'], 'dd/MM HH:mm')}</p>
-                </div>
-             </div>
+                  <div className="flex items-center gap-4 bg-slate-50/50 p-4 rounded-2xl">
+                      <div className="bg-white p-2.5 rounded-xl shadow-sm text-gray-400"><User size={18} /></div>
+                      <p className="text-xs font-bold text-gray-700 truncate">{state.motoristas.find((m: any) => m['MotoristaId'] === carga['MotoristaId'])?.['NomedoMotorista'] || 'Motorista'}</p>
+                  </div>
+               </div>
 
-             {carga['StatusCarga'] === 'ATIVA' && (
-                <button onClick={() => setIsFinishing(carga['CargaId'])} className="w-full bg-blue-900 text-white flex items-center justify-center gap-2 text-[10px] font-black uppercase border border-blue-900 py-4 rounded-2xl hover:bg-black active:scale-95 transition-all shadow-lg shadow-blue-100">
-                  Encerrar Rota <ArrowRight size={14} />
-                </button>
-             )}
-          </div>
-        ))}
+               <div className="pt-2 grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50/30 p-4 rounded-2xl">
+                      <div className="flex items-center gap-1.5 mb-1 opacity-30">
+                          <Calendar size={10} />
+                          <span className="text-[8px] font-black uppercase">Saída</span>
+                      </div>
+                      <p className="text-sm font-black text-gray-800">{format(carga['DataInicio'], 'dd/MM HH:mm')}</p>
+                  </div>
+                  <div className={`p-4 rounded-2xl ${carga.StatusCarga === 'FINALIZADA' ? 'bg-slate-100' : 'bg-blue-600/5'}`}>
+                      <div className={`flex items-center gap-1.5 mb-1 ${carga.StatusCarga === 'FINALIZADA' ? 'text-gray-400' : 'text-blue-600'} opacity-40`}>
+                          <Gauge size={10} />
+                          <span className="text-[8px] font-black uppercase italic">{carga.StatusCarga === 'FINALIZADA' ? 'Chegada Real' : 'Volta Prev.'}</span>
+                      </div>
+                      <p className={`text-sm font-black ${carga.StatusCarga === 'FINALIZADA' ? 'text-gray-600' : isLate ? 'text-orange-600' : 'text-blue-700'} italic`}>
+                          {carga.StatusCarga === 'FINALIZADA' && carga.ChegadaReal ? format(carga.ChegadaReal, 'dd/MM HH:mm') : format(carga.VoltaPrevista, 'dd/MM HH:mm')}
+                      </p>
+                  </div>
+               </div>
+
+               {carga['StatusCarga'] === 'ATIVA' && (
+                  <button onClick={() => setIsFinishing(carga['CargaId'])} className="w-full bg-blue-900 text-white flex items-center justify-center gap-2 text-[10px] font-black uppercase border border-blue-900 py-4 rounded-2xl hover:bg-black active:scale-95 transition-all shadow-lg shadow-blue-100">
+                    Encerrar Rota <ArrowRight size={14} />
+                  </button>
+               )}
+            </div>
+          );
+        })}
         {visibleCargas.length === 0 && (
             <div className="md:col-span-2 xl:col-span-3 py-20 text-center">
                 <p className="text-gray-300 font-black uppercase text-xs tracking-widest">Nenhuma carga encontrada para este filtro.</p>
