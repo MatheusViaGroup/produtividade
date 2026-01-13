@@ -28,7 +28,7 @@ export interface Usuario {
   'LoginUsuario': string;
   'SenhaUsuario': string;
   'NivelAcesso': Role;
-  'PlantaId'?: string;
+  'PlantaID'?: string;
   'id': string;
 }
 
@@ -53,6 +53,7 @@ export interface Carga {
   'Diff2_Justificativa'?: string;
 }
 
+// Fix: Added missing AppState interface definition required by store.ts
 export interface AppState {
   plantas: Planta[];
   caminhoes: Caminhao[];

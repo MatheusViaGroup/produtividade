@@ -143,17 +143,17 @@ export const useAppState = () => {
             NivelAcesso: payload.NivelAcesso
         };
 
+        // De acordo com o print enviado, a coluna se chama PlantaID (ID em maiúsculo)
         if (payload.NivelAcesso === 'Operador' && payload.PlantaId) {
-            // Tentando 'Planta' como nome interno da coluna (GUID string)
-            fields.Planta = payload.PlantaId;
+            fields.PlantaID = payload.PlantaId; // Gravando o GUID da planta vinculada
         } else {
-            fields.Planta = null;
+            fields.PlantaID = null;
         }
 
-        console.log("Payload addUsuario para SharePoint:", fields);
+        console.log("Enviando para o SharePoint:", fields);
 
         const response = await graph.createItem(LISTS.USUARIOS, fields);
-        const newItem = { ...fields, id: response.id, PlantaId: payload.PlantaId };
+        const newItem = { ...fields, id: response.id };
         setState(prev => ({ ...prev, usuarios: [...prev.usuarios, newItem] }));
         return newItem;
     } catch (error: any) {
