@@ -19,10 +19,9 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
   const filteredCargas = useMemo(() => {
     return cargas.filter((c: Carga) => {
-      // Usando novo status 'CONCLUIDO'
       const isFinalizada = c['StatusCarga'] === 'CONCLUIDO';
       const isPlantaMatch = selectedPlanta === 'all' || c['PlantaId'] === selectedPlanta;
-      const date = c['DataInicio'];
+      const date = new Date(c['DataInicio']);
       const isDateMatch = isWithinInterval(date, {
         start: startOfDay(new Date(dateStart)),
         end: endOfDay(new Date(dateEnd))
@@ -42,20 +41,20 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
     const totalMinutes = filteredCargas.reduce((acc, c) => {
       if (!c.ChegadaReal) return acc;
-      return acc + differenceInMinutes(c.ChegadaReal, c.DataInicio);
+      return acc + differenceInMinutes(new Date(c.ChegadaReal), new Date(c.DataInicio));
     }, 0);
 
     const totalKm = filteredCargas.reduce((acc, c) => acc + (c.KmReal || 0), 0);
 
     const totalUnloadMinutes = filteredCargas.reduce((acc, c) => {
         if (!c.ChegadaReal || !c.KmReal) return acc;
-        const actualMinutes = differenceInMinutes(c.ChegadaReal, c.DataInicio);
+        const actualMinutes = differenceInMinutes(new Date(c.ChegadaReal), new Date(c.DataInicio));
         const estimatedTravelMinutes = (c.KmReal / 38) * 60;
         const unload = Math.max(0, actualMinutes - estimatedTravelMinutes);
         return acc + unload;
     }, 0);
 
-    const uniqueDays = new Set(filteredCargas.map(c => format(c.DataInicio, 'yyyy-MM-dd'))).size;
+    const uniqueDays = new Set(filteredCargas.map(c => format(new Date(c.DataInicio), 'yyyy-MM-dd'))).size;
 
     return {
       avgRouteTime: Math.round(totalMinutes / filteredCargas.length),
@@ -74,7 +73,7 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
     );
 
     allFinalized.forEach(c => {
-        const month = format(c.DataInicio, 'MM/yyyy');
+        const month = format(new Date(c.DataInicio), 'MM/yyyy');
         monthlyData[month] = (monthlyData[month] || 0) + (c.KmReal || 0);
     });
 

@@ -19,7 +19,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const [filter, setFilter] = useState<'ATIVAS' | 'HISTORICO'>('ATIVAS');
   const [now, setNow] = useState(new Date());
 
-  // New local filters state
   const [selectedPlanta, setSelectedPlanta] = useState<string>('all');
   const [selectedMotorista, setSelectedMotorista] = useState<string>('all');
   const [dateStart, setDateStart] = useState('');
@@ -36,25 +35,17 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const availableCaminhoes = (state.caminhoes || []).filter((c: Caminhao) => !userPlantId || c['PlantaId'] === userPlantId);
   const availableMotoristas = (state.motoristas || []).filter((m: Motorista) => !userPlantId || m['PlantaId'] === userPlantId);
 
-  // Advanced Filtering Logic
   const visibleCargas = useMemo(() => {
     return (state.cargas || []).filter((c: Carga) => {
-      // 1. Status Match (Tab filter)
       const isStatusMatch = filter === 'ATIVAS' ? c['StatusCarga'] === 'PENDENTE' : c['StatusCarga'] === 'CONCLUIDO';
       if (!isStatusMatch) return false;
 
-      // 2. User Permission Restriction (Always applied)
       if (userPlantId && c['PlantaId'] !== userPlantId) return false;
-
-      // 3. UI Filter: Planta
       if (selectedPlanta !== 'all' && c['PlantaId'] !== selectedPlanta) return false;
-
-      // 4. UI Filter: Motorista
       if (selectedMotorista !== 'all' && c['MotoristaId'] !== selectedMotorista) return false;
 
-      // 5. UI Filter: Date Range
       if (dateStart || dateEnd) {
-        const loadDate = c['DataInicio'];
+        const loadDate = new Date(c['DataInicio']);
         if (dateStart) {
           if (isAfter(startOfDay(new Date(dateStart)), loadDate)) return false;
         }
@@ -65,8 +56,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
       return true;
     }).sort((a: Carga, b: Carga) => {
-      if (filter === 'ATIVAS') return b['DataCriacao'].getTime() - a['DataCriacao'].getTime();
-      return (b['ChegadaReal']?.getTime() || 0) - (a['ChegadaReal']?.getTime() || 0);
+      if (filter === 'ATIVAS') return new Date(b['DataCriacao']).getTime() - new Date(a['DataCriacao']).getTime();
+      return (new Date(b['ChegadaReal'] || 0).getTime()) - (new Date(a['ChegadaReal'] || 0).getTime());
     });
   }, [state.cargas, filter, userPlantId, selectedPlanta, selectedMotorista, dateStart, dateEnd]);
 
@@ -104,8 +95,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
           caminhaoId: carga.CaminhaoId,
           motoristaId: carga.MotoristaId,
           tipo: carga.TipoCarga,
-          dataInicio: format(carga.DataInicio, "yyyy-MM-dd'T'HH:mm"),
-          voltaPrevista: format(carga.VoltaPrevista, "yyyy-MM-dd'T'HH:mm"),
+          dataInicio: format(new Date(carga.DataInicio), "yyyy-MM-dd'T'HH:mm"),
+          voltaPrevista: format(new Date(carga.VoltaPrevista), "yyyy-MM-dd'T'HH:mm"),
           kmPrevisto: carga.KmPrevisto,
         });
       }
@@ -117,15 +108,14 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
         const carga = state.cargas.find((c: any) => c['CargaId'] === isFinishing);
         if (carga) {
             const chegadaRealDate = new Date(finishData.chegadaReal);
-            const prevArrival = findPreviousLoadArrival(carga['CaminhaoId'], carga['DataInicio'], state.cargas);
+            const prevArrival = findPreviousLoadArrival(carga['CaminhaoId'], new Date(carga['DataInicio']), state.cargas);
             
             let d1 = 0; 
             if (prevArrival) { 
-                d1 = differenceInMinutes(carga['DataInicio'], prevArrival); 
+                d1 = differenceInMinutes(new Date(carga['DataInicio']), prevArrival); 
             }
             
-            const d2 = differenceInMinutes(chegadaRealDate, carga['VoltaPrevista']);
-            
+            const d2 = differenceInMinutes(chegadaRealDate, new Date(carga['VoltaPrevista']));
             setFinishData(prev => ({ ...prev, diff1: d1, diff2: d2 }));
         }
     }
@@ -213,7 +203,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
   return (
     <div className="space-y-6">
-      {/* Search and Filters Bar */}
       <div className="bg-white p-6 rounded-[2.5rem] border border-blue-50 shadow-sm space-y-4 animate-in fade-in duration-500">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
@@ -302,9 +291,9 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
         {visibleCargas.map((carga: Carga) => {
           const hasDivergence = (carga.Diff1_Gap || 0) > 60 || (carga.Diff2_Atraso || 0) > 30;
-          const isLate = carga.StatusCarga === 'PENDENTE' && isAfter(now, carga.VoltaPrevista);
+          const isLate = carga.StatusCarga === 'PENDENTE' && isAfter(now, new Date(carga.VoltaPrevista));
           const isHistory = filter === 'HISTORICO';
-          const totalRouteMinutes = carga.ChegadaReal ? differenceInMinutes(carga.ChegadaReal, carga.DataInicio) : 0;
+          const totalRouteMinutes = carga.ChegadaReal ? differenceInMinutes(new Date(carga.ChegadaReal), new Date(carga.DataInicio)) : 0;
           
           return (
             <div key={carga['CargaId']} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm p-6 sm:p-7 space-y-5 hover:shadow-xl transition-all duration-300 relative ${isLate ? 'border-orange-200 bg-orange-50/10' : isHistory ? (hasDivergence ? 'border-red-200 bg-red-50/5' : 'border-emerald-100 bg-emerald-50/5') : 'border-blue-50'}`}>
@@ -359,7 +348,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                   </div>
                   <div className={`text-right pr-14`}>
                       <p className="text-[9px] font-black text-blue-800/30 uppercase leading-none">{isHistory ? 'Finalizada em' : 'Criada em'}</p>
-                      <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">{isHistory && carga.ChegadaReal ? format(carga.ChegadaReal, 'dd/MM HH:mm') : format(carga.DataCriacao, 'dd/MM HH:mm')}</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">{isHistory && carga.ChegadaReal ? format(new Date(carga.ChegadaReal), 'dd/MM HH:mm') : format(new Date(carga.DataCriacao), 'dd/MM HH:mm')}</p>
                   </div>
                </div>
 
@@ -412,7 +401,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                           <Calendar size={10} />
                           <span className="text-[8px] font-black uppercase">Saída</span>
                       </div>
-                      <p className="text-sm font-black text-gray-800">{format(carga['DataInicio'], 'dd/MM HH:mm')}</p>
+                      <p className="text-sm font-black text-gray-800">{format(new Date(carga['DataInicio']), 'dd/MM HH:mm')}</p>
                   </div>
                   <div className={`p-4 rounded-2xl ${carga.StatusCarga === 'CONCLUIDO' ? 'bg-slate-100' : 'bg-blue-600/5'}`}>
                       <div className={`flex items-center gap-1.5 mb-1 ${carga.StatusCarga === 'CONCLUIDO' ? 'text-gray-400' : 'text-blue-600'} opacity-40`}>
@@ -420,7 +409,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                           <span className="text-[8px] font-black uppercase italic">{carga.StatusCarga === 'CONCLUIDO' ? 'Chegada Real' : 'Volta Prev.'}</span>
                       </div>
                       <p className={`text-sm font-black ${carga.StatusCarga === 'CONCLUIDO' ? 'text-gray-600' : isLate ? 'text-orange-600' : 'text-blue-700'} italic`}>
-                          {carga.StatusCarga === 'CONCLUIDO' && carga.ChegadaReal ? format(carga.ChegadaReal, 'dd/MM HH:mm') : format(carga.VoltaPrevista, 'dd/MM HH:mm')}
+                          {carga.StatusCarga === 'CONCLUIDO' && carga.ChegadaReal ? format(new Date(carga.ChegadaReal), 'dd/MM HH:mm') : format(new Date(carga.VoltaPrevista), 'dd/MM HH:mm')}
                       </p>
                   </div>
                </div>

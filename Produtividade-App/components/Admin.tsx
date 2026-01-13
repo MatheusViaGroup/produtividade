@@ -17,6 +17,41 @@ const inputClass = "w-full border border-blue-100 rounded-xl px-4 py-3 bg-white 
 const labelClass = "block text-[10px] font-black text-blue-800/50 uppercase tracking-widest mb-1.5 ml-1";
 const cardClass = "bg-white p-6 rounded-3xl border border-blue-50 shadow-sm lg:sticky lg:top-24 mb-8 lg:mb-0";
 
+// Função auxiliar para processar datas de forma robusta
+const parseExcelDate = (val: any): Date => {
+    if (!val) return new Date();
+    
+    // Se for número (serial do Excel)
+    if (typeof val === 'number') {
+        return new Date(Date.UTC(0, 0, val - 25569));
+    }
+    
+    // Se for string, tentamos tratar o formato brasileiro DD/MM/YYYY
+    const str = String(val).trim();
+    if (str.includes('/')) {
+        const parts = str.split(' ');
+        const dateParts = parts[0].split('/');
+        if (dateParts.length === 3) {
+            const day = parseInt(dateParts[0], 10);
+            const month = parseInt(dateParts[1], 10) - 1;
+            const year = parseInt(dateParts[2], 10);
+            
+            let hours = 0, minutes = 0;
+            if (parts[1]) {
+                const timeParts = parts[1].split(':');
+                hours = parseInt(timeParts[0], 10) || 0;
+                minutes = parseInt(timeParts[1], 10) || 0;
+            }
+            
+            const d = new Date(year, month, day, hours, minutes);
+            if (!isNaN(d.getTime())) return d;
+        }
+    }
+    
+    const parsed = new Date(val);
+    return isNaN(parsed.getTime()) ? new Date() : parsed;
+};
+
 const FormLayout: React.FC<{ title: string; children: React.ReactNode; onSubmit: (e: React.FormEvent) => void; loading?: boolean }> = ({ title, children, onSubmit, loading }) => (
   <div className={cardClass}>
     <h4 className="font-black text-blue-900 uppercase text-xs mb-6 flex items-center gap-2">
@@ -98,14 +133,7 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         const eventoStr = String(row['Eventos'] || '').trim().toUpperCase();
                         const kmPrevisto = Number(row['KM previsto'] || 0);
                         
-                        let dataInicio: Date;
-                        if (typeof row['Início'] === 'number') {
-                            dataInicio = new Date(Date.UTC(0, 0, row['Início'] - 25569));
-                        } else {
-                            dataInicio = new Date(row['Início']);
-                        }
-
-                        if (isNaN(dataInicio.getTime())) throw new Error("Data de início inválida");
+                        const dataInicio = parseExcelDate(row['Início']);
 
                         const planta = state.plantas.find((p: Planta) => p['NomedaUnidade'].trim().toLowerCase() === plantaStr.toLowerCase());
                         const caminhao = state.caminhoes.find((c: Caminhao) => c['Placa'].trim().toUpperCase() === placaStr);
