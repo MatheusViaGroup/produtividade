@@ -135,28 +135,21 @@ export const useAppState = () => {
   const addUsuario = async (payload: any) => {
     if (!graph) return;
     try {
-        // Mapeamento de campos conforme solicitado pelo usuário
         const fields: any = {
             Title: payload.NomeCompleto,           // Nome Completo no Title
             NomeCompleto: payload.NomeCompleto,    // Campo interno NomeCompleto
             LoginUsuario: payload.LoginUsuario,    // Login
-            Email: payload.LoginUsuario,           // Email mapeado do Login
             SenhaUsuario: payload.SenhaUsuario,    // Senha
             NivelAcesso: payload.NivelAcesso       // Nível
         };
 
-        // Tratamento de Lookup e Limpeza de Payload
         if (payload.NivelAcesso === 'Operador' && payload.PlantaId) {
             // SharePoint Lookup exige o ID numérico do item como Number
             fields.PlantaId = Number(payload.PlantaId);
         } else {
-            // Se for Admin, não enviamos PlantaId (ou enviamos null)
-            // Note: Se a coluna no SP for obrigatória para todos, enviar null pode falhar, 
-            // mas geralmente Lookups são opcionais para Admins.
             fields.PlantaId = null;
         }
 
-        // Debug: Log dos dados enviados
         console.log("Dados enviados ao SharePoint (addUsuario):", fields);
 
         const response = await graph.createItem(LISTS.USUARIOS, fields);
