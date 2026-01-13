@@ -10,9 +10,13 @@ interface IndicatorsProps {
 }
 
 export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
+  const currentUser = state.currentUser;
+  const userPlantId = currentUser?.PlantaId;
+
+  // Inicia o filtro com a planta do usuário se ele for operador, caso contrário inicia com 'all'
   const [dateStart, setDateStart] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedPlanta, setSelectedPlanta] = useState<string>('all');
+  const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantId || 'all');
 
   const cargas = state.cargas || [];
   const plantas = state.plantas || [];
@@ -20,7 +24,12 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
   const filteredCargas = useMemo(() => {
     return cargas.filter((c: Carga) => {
       const isFinalizada = c['StatusCarga'] === 'CONCLUIDO';
-      const isPlantaMatch = selectedPlanta === 'all' || c['PlantaId'] === selectedPlanta;
+      
+      // Lógica de separação por PlantaId: 
+      // Se houver uma planta selecionada (ou travada pelo usuário), filtra estritamente por ela.
+      const currentViewPlant = userPlantId || selectedPlanta;
+      const isPlantaMatch = currentViewPlant === 'all' || c['PlantaId'] === currentViewPlant;
+      
       const date = new Date(c['DataInicio']);
       const isDateMatch = isWithinInterval(date, {
         start: startOfDay(new Date(dateStart)),
@@ -28,7 +37,7 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
       });
       return isFinalizada && isPlantaMatch && isDateMatch;
     });
-  }, [cargas, selectedPlanta, dateStart, dateEnd]);
+  }, [cargas, userPlantId, selectedPlanta, dateStart, dateEnd]);
 
   const metrics = useMemo(() => {
     if (filteredCargas.length === 0) return {
@@ -67,9 +76,10 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
   const chartData = useMemo(() => {
     const monthlyData: Record<string, number> = {};
+    const currentViewPlant = userPlantId || selectedPlanta;
     
     const allFinalized = cargas.filter((c: Carga) => 
-        c['StatusCarga'] === 'CONCLUIDO' && (selectedPlanta === 'all' || c['PlantaId'] === selectedPlanta)
+        c['StatusCarga'] === 'CONCLUIDO' && (currentViewPlant === 'all' || c['PlantaId'] === currentViewPlant)
     );
 
     allFinalized.forEach(c => {
@@ -84,7 +94,7 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
           const [mB, yB] = b.name.split('/').map(Number);
           return (yA * 12 + mA) - (yB * 12 + mB);
       });
-  }, [cargas, selectedPlanta]);
+  }, [cargas, userPlantId, selectedPlanta]);
 
   const Card = ({ title, value, unit, icon: Icon, color }: any) => (
     <div className="bg-white p-6 rounded-[2rem] border border-blue-50 shadow-sm flex items-center gap-5 hover:shadow-md transition-shadow">
@@ -109,11 +119,12 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
           <div className="relative">
             <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} />
             <select 
+                disabled={!!userPlantId}
                 value={selectedPlanta} 
                 onChange={e => setSelectedPlanta(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none"
+                className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none disabled:opacity-50"
             >
-                <option value="all">Todas as Plantas</option>
+                {!userPlantId && <option value="all">Todas as Plantas</option>}
                 {plantas.map((p: Planta) => (
                     <option key={p.PlantaId} value={p.PlantaId}>{p.NomedaUnidade}</option>
                 ))}
