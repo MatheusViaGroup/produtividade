@@ -136,24 +136,24 @@ export const useAppState = () => {
     if (!graph) return;
     try {
         const fields: any = {
-            Title: payload.NomeCompleto,           // Nome Completo no Title
-            NomeCompleto: payload.NomeCompleto,    // Campo interno NomeCompleto
-            LoginUsuario: payload.LoginUsuario,    // Login
-            SenhaUsuario: payload.SenhaUsuario,    // Senha
-            NivelAcesso: payload.NivelAcesso       // Nível
+            Title: payload.NomeCompleto,
+            NomeCompleto: payload.NomeCompleto,
+            LoginUsuario: payload.LoginUsuario,
+            SenhaUsuario: payload.SenhaUsuario,
+            NivelAcesso: payload.NivelAcesso
         };
 
         if (payload.NivelAcesso === 'Operador' && payload.PlantaId) {
-            // SharePoint Lookup exige o ID numérico do item como Number
-            fields.PlantaId = Number(payload.PlantaId);
+            // Tentando 'Planta' como nome interno da coluna (GUID string)
+            fields.Planta = payload.PlantaId;
         } else {
-            fields.PlantaId = null;
+            fields.Planta = null;
         }
 
-        console.log("Dados enviados ao SharePoint (addUsuario):", fields);
+        console.log("Payload addUsuario para SharePoint:", fields);
 
         const response = await graph.createItem(LISTS.USUARIOS, fields);
-        const newItem = { ...fields, id: response.id };
+        const newItem = { ...fields, id: response.id, PlantaId: payload.PlantaId };
         setState(prev => ({ ...prev, usuarios: [...prev.usuarios, newItem] }));
         return newItem;
     } catch (error: any) {
