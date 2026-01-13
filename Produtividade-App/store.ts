@@ -66,7 +66,6 @@ export const useAppState = () => {
                     DataInicio: item.DataInicio ? new Date(item.DataInicio) : new Date(),
                     VoltaPrevista: item.VoltaPrevista ? new Date(item.VoltaPrevista) : new Date(),
                     ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined,
-                    // Garante que o mapeamento interno reflita as colunas do SharePoint
                     Diff1_Justificativa: item.Diff1_Justificativa,
                     Diff2_Atraso: item.Diff2_Atraso,
                     Diff2_Justificativa: item.Diff2_Justificativa
@@ -195,6 +194,17 @@ export const useAppState = () => {
     }
   };
 
+  const deleteCarga = async (id: string) => {
+    if (!graph) return;
+    try {
+        await graph.deleteItem(LISTS.CARGAS, id);
+        setState(prev => ({ ...prev, cargas: prev.cargas.filter(c => c.CargaId !== id) }));
+    } catch (error) {
+        console.error("Erro ao excluir carga:", error);
+        alert("Falha ao excluir carga no SharePoint.");
+    }
+  };
+
   const addCarga = async (payload: any) => {
     if (!graph) return;
     try {
@@ -255,26 +265,36 @@ export const useAppState = () => {
   const updateCarga = async (updated: Carga) => {
     if (!graph) return;
     try {
-        // Mapeamento direto com as colunas do SharePoint conforme o screenshot do PowerApps
-        const sharePointFields = {
-            KmReal: updated['KmReal'],
-            ChegadaReal: updated['ChegadaReal']?.toISOString(),
-            StatusCarga: 'CONCLUIDO',
-            Diff1_Gap: updated['Diff1_Gap'],
-            Diff1_Justificativa: updated['Diff1_Justificativa'],
-            Diff2_Atraso: updated['Diff2_Atraso'],
-            Diff2_Justificativa: updated['Diff2_Justificativa']
+        const sharePointFields: any = {
+            CaminhaoId: updated.CaminhaoId,
+            MotoristaId: updated.MotoristaId,
+            TipoCarga: updated.TipoCarga,
+            KmPrevisto: updated.KmPrevisto,
+            DataInicio: updated.DataInicio.toISOString(),
+            VoltaPrevista: updated.VoltaPrevista.toISOString(),
+            StatusCarga: updated.StatusCarga,
+            KmReal: updated.KmReal,
+            ChegadaReal: updated.ChegadaReal?.toISOString(),
+            Diff1_Gap: updated.Diff1_Gap,
+            Diff1_Justificativa: updated.Diff1_Justificativa,
+            Diff2_Atraso: updated.Diff2_Atraso,
+            Diff2_Justificativa: updated.Diff2_Justificativa
         };
 
-        await graph.updateItem(LISTS.CARGAS, updated['CargaId'], sharePointFields);
+        const caminhao = state.caminhoes.find(c => c.CaminhaoId === updated.CaminhaoId);
+        if (caminhao) {
+          sharePointFields.Title = caminhao.Placa;
+        }
+
+        await graph.updateItem(LISTS.CARGAS, updated.CargaId, sharePointFields);
         
         setState(prev => ({
             ...prev,
-            cargas: prev.cargas.map(c => c['CargaId'] === updated['CargaId'] ? { ...updated, StatusCarga: 'CONCLUIDO' as const } : c)
+            cargas: prev.cargas.map(c => c.CargaId === updated.CargaId ? { ...updated } : c)
         }));
     } catch (error) {
         console.error("Erro ao atualizar carga:", error);
-        alert("Erro ao salvar finalização no SharePoint. Verifique as permissões.");
+        alert("Erro ao salvar alterações no SharePoint.");
     }
   };
 
@@ -301,5 +321,5 @@ export const useAppState = () => {
       setGraph(null);
   };
 
-  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addPlanta, addUsuario, addCarga, addCaminhao, addMotorista, updateCarga, deletePlanta, deleteCaminhao, deleteUsuario, deleteMotorista, setCurrentUser, logout };
+  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addPlanta, addUsuario, addCarga, addCaminhao, addMotorista, updateCarga, deletePlanta, deleteCaminhao, deleteUsuario, deleteMotorista, deleteCarga, setCurrentUser, logout };
 };
