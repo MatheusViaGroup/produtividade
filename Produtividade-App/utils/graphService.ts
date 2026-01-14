@@ -28,6 +28,7 @@ export async function getMsal() {
 
 const SITE_PATHS = {
     POWERAPPS: { host: "vialacteoscombr.sharepoint.com", path: "/sites/Powerapps" },
+    // Ajustado para viagroup_com_br conforme contexto do projeto
     PERSONAL: { host: "vialacteoscombr-my.sharepoint.com", path: "/personal/matheus_henrique_viagroup_com_br" }
 };
 
@@ -50,15 +51,25 @@ export class GraphService {
     }
 
     async resolveSites() {
-        console.log("Iniciando resolução de sites SharePoint...");
+        console.log("Iniciando resolução de containers SharePoint...");
         for (const [key, config] of Object.entries(SITE_PATHS)) {
             try {
-                const site = await this.client.api(`/sites/${config.host}:${config.path}`).get();
+                // Tentar resolver pelo caminho completo (Host + Path)
+                const url = `/sites/${config.host}:${config.path}`;
+                const site = await this.client.api(url).get();
                 this.siteIds[key] = site.id;
-                console.log(`✅ Site ${key} resolvido: ${site.id}`);
+                console.log(`✅ [${key}] Site resolvido via Caminho: ${site.id}`);
             } catch (error: any) {
-                console.error(`❌ Erro ao resolver site ${key} (${config.path}):`, error.message);
-                if (key === 'POWERAPPS') throw new Error(`O site principal Powerapps não pôde ser acessado. Verifique as permissões.`);
+                console.warn(`⚠️ [${key}] Falha ao resolver via caminho. Tentando via Host Root...`);
+                try {
+                    // Fallback: Tentar pegar o site root do host
+                    const rootSite = await this.client.api(`/sites/${config.host}`).get();
+                    this.siteIds[key] = rootSite.id;
+                    console.log(`✅ [${key}] Site resolvido via Root: ${rootSite.id}`);
+                } catch (innerError: any) {
+                    console.error(`❌ [${key}] Erro Crítico: Não foi possível localizar o site no host ${config.host}`);
+                    if (key === 'POWERAPPS') throw new Error(`O site Powerapps é obrigatório e não foi encontrado.`);
+                }
             }
         }
     }
@@ -91,7 +102,7 @@ export class GraphService {
     async getListItems(listConfig: { id: string, siteRef: string }) {
         const siteId = this.siteIds[listConfig.siteRef];
         if (!siteId) {
-            console.error(`Impossível buscar lista ${listConfig.id}: Site ${listConfig.siteRef} não resolvido.`);
+            console.error(`❌ Site ${listConfig.siteRef} não resolvido. Operação de leitura cancelada para lista ${listConfig.id}.`);
             return [];
         }
 
@@ -99,6 +110,7 @@ export class GraphService {
             const response = await this.client
                 .api(`/sites/${siteId}/lists/${listConfig.id}/items`)
                 .expand("fields")
+                .top(999) // Garantir que pegamos mais itens
                 .get();
             
             return response.value.map((item: any) => ({
@@ -106,14 +118,15 @@ export class GraphService {
                 ...item.fields
             }));
         } catch (error: any) {
-            console.error(`Erro ao ler itens da lista ${listConfig.id}:`, error.message);
+            console.error(`❌ Falha ao ler lista ${listConfig.id} no site ${listConfig.siteRef}:`, error.message);
             return [];
         }
     }
 
     async createItem(listConfig: { id: string, siteRef: string }, fields: any) {
         const siteId = this.siteIds[listConfig.siteRef];
-        if (!siteId) throw new Error("Site não resolvido para criação de item.");
+        if (!siteId) throw new Error(`Não foi possível localizar o site de destino (${listConfig.siteRef}). Verifique se as permissões de administrador estão corretas.`);
+        
         return await this.client
             .api(`/sites/${siteId}/lists/${listConfig.id}/items`)
             .post({ fields });
@@ -121,7 +134,8 @@ export class GraphService {
 
     async updateItem(listConfig: { id: string, siteRef: string }, itemId: string, fields: any) {
         const siteId = this.siteIds[listConfig.siteRef];
-        if (!siteId) throw new Error("Site não resolvido para atualização.");
+        if (!siteId) throw new Error(`Site de destino (${listConfig.siteRef}) não disponível.`);
+        
         return await this.client
             .api(`/sites/${siteId}/lists/${listConfig.id}/items/${itemId}/fields`)
             .patch(fields);
@@ -129,7 +143,8 @@ export class GraphService {
 
     async deleteItem(listConfig: { id: string, siteRef: string }, itemId: string) {
         const siteId = this.siteIds[listConfig.siteRef];
-        if (!siteId) throw new Error("Site não resolvido para exclusão.");
+        if (!siteId) throw new Error(`Site de destino (${listConfig.siteRef}) não disponível.`);
+        
         return await this.client
             .api(`/sites/${siteId}/lists/${listConfig.id}/items/${itemId}`)
             .delete();
