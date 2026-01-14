@@ -93,8 +93,8 @@ export const useAppState = () => {
                   ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined,
                   KmReal: item.KmReal ? Number(item.KmReal) : undefined,
                   KmPrevisto: item.KmPrevisto ? Number(item.KmPrevisto) : 0,
-                  // Mapeamento de campos com erro de digitação ou pontos do SharePoint
-                  Diff1_Justificativa: item.Diff1_Jusitificativa || item.Diff1_Justificativa,
+                  // Mapeamento resiliente para o campo de justificativa corrigido
+                  Diff1_Justificativa: item.Diff1_Justificativa || item.Diff1_Jusitificativa,
                   Diff2_Atraso: item['Diff2_x002e_Atraso'] || item['Diff2.Atraso'] || item.Diff2_Atraso,
                   Diff2_Justificativa: item['Diff2_x002e_Justificativa'] || item['Diff2.Justificativa'] || item.Diff2_Justificativa
               };
@@ -133,7 +133,6 @@ export const useAppState = () => {
 
   const addPlanta = async (payload: any) => {
     if (!graph) return;
-    // Fix: Using PlantaId instead of PlantaID
     const fields = { Title: payload.NomedaUnidade, NomedaUnidade: payload.NomedaUnidade, PlantaId: normalizeId(payload.PlantaId) };
     const response = await graph.createItem(LISTS.PLANTAS.id, fields);
     const newItem = { ...fields, id: normalizeId(response.id), PlantaId: normalizeId(payload.PlantaId) };
@@ -142,7 +141,6 @@ export const useAppState = () => {
 
   const addUsuario = async (payload: any) => {
     if (!graph) return;
-    // Fix: Using PlantaId instead of PlantaID
     const fields = { Title: payload.NomeCompleto, NomeCompleto: payload.NomeCompleto, LoginUsuario: payload.LoginUsuario, SenhaUsuario: payload.SenhaUsuario, NivelAcesso: payload.NivelAcesso, PlantaId: normalizeId(payload.PlantaId) };
     const response = await graph.createItem(LISTS.USUARIOS.id, fields);
     setState(prev => ({ ...prev, usuarios: [...prev.usuarios, { ...payload, id: normalizeId(response.id), PlantaId: normalizeId(payload.PlantaId) }] }));
@@ -150,7 +148,6 @@ export const useAppState = () => {
 
   const addCarga = async (payload: any) => {
     if (!graph) return;
-    // Fix: Using PlantaId instead of PlantaID
     const fields = {
       Title: 'Carga',
       PlantaId: normalizeId(payload.PlantaId),
@@ -182,13 +179,11 @@ export const useAppState = () => {
             KmReal: updated.KmReal,
             ChegadaReal: updated.ChegadaReal?.toISOString(),
             Diff1_Gap: updated.Diff1_Gap,
-            // ATENÇÃO: Usando o nome interno exato do SharePoint (com erro de grafia)
-            // Diff1_Jusitificativa is correctly referenced as the internal SP field name
-            Diff1_Jusitificativa: updated.Diff1_Justificativa,
+            // Correção do nome do campo conforme solicitado pelo usuário para evitar Erro 400
+            Diff1_Justificativa: updated.Diff1_Justificativa,
             // SharePoint converte ponto em _x002e_
             Diff2_x002e_Atraso: updated.Diff2_Atraso,
             Diff2_x002e_Justificativa: updated.Diff2_Justificativa,
-            // Fix: Updated line 186 to use PlantaId
             PlantaId: normalizeId(updated.PlantaId)
         };
         await graph.updateItem(LISTS.CARGAS.id, updated.CargaId, fields);
@@ -204,7 +199,6 @@ export const useAppState = () => {
 
   const addCaminhao = async (payload: any) => {
     if (!graph) return;
-    // Fix: Using PlantaId instead of PlantaID
     const fields = { Title: payload.Placa, Placa: payload.Placa, PlantaId: normalizeId(payload.PlantaId), CaminhaoId: normalizeId(payload.CaminhaoId) };
     const response = await graph.createItem(LISTS.CAMINHOES.id, fields);
     setState(prev => ({ ...prev, caminhoes: [...prev.caminhoes, { ...fields, id: normalizeId(response.id), CaminhaoId: normalizeId(payload.CaminhaoId), PlantaId: normalizeId(payload.PlantaId) }] }));
@@ -212,7 +206,6 @@ export const useAppState = () => {
 
   const addMotorista = async (payload: any) => {
     if (!graph) return;
-    // Fix: Using PlantaId instead of PlantaID
     const fields = { Title: payload.NomedoMotorista, NomedoMotorista: payload.NomedoMotorista, PlantaId: normalizeId(payload.PlantaId), MotoristaId: normalizeId(payload.MotoristaId) };
     const response = await graph.createItem(LISTS.MOTORISTAS.id, fields);
     setState(prev => ({ ...prev, motoristas: [...prev.motoristas, { ...fields, id: normalizeId(response.id), MotoristaId: normalizeId(payload.MotoristaId), PlantaId: normalizeId(payload.PlantaId) }] }));
