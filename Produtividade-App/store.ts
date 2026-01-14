@@ -38,18 +38,16 @@ export const useAppState = () => {
       setIsAuthenticated(true);
       await service.resolveSites();
       
-      console.log("Sincronizando listas do SharePoint...");
+      console.log("Iniciando sincronização unificada...");
       
-      // Carregando dados
+      // Carregando todas as listas do site Powerapps
       const [u, cr, p, c, m] = await Promise.all([
-        service.getListItems(LISTS.USUARIOS),
-        service.getListItems(LISTS.CARGAS),
-        service.getListItems(LISTS.PLANTAS),
-        service.getListItems(LISTS.CAMINHOES),
-        service.getListItems(LISTS.MOTORISTAS)
+        service.getListItems(LISTS.USUARIOS.id),
+        service.getListItems(LISTS.CARGAS.id),
+        service.getListItems(LISTS.PLANTAS.id),
+        service.getListItems(LISTS.CAMINHOES.id),
+        service.getListItems(LISTS.MOTORISTAS.id)
       ]);
-
-      console.log(`Dados carregados: ${u.length} usuários, ${cr.length} cargas, ${p.length} plantas.`);
 
       setGraph(service);
 
@@ -57,31 +55,31 @@ export const useAppState = () => {
           const normalizedPlantas = p.map((item: any) => ({
               ...item,
               id: normalizeId(item.id),
-              PlantaID: normalizeId(item.PlantaID || item.PlantaId || item.id)
+              PlantaID: normalizeId(item.PlantaId || item.PlantaID || item.id)
           }));
 
           const normalizedCaminhoes = c.map((item: any) => ({ 
               ...item, 
               id: normalizeId(item.id),
-              CaminhaoId: normalizeId(item.id),
-              PlantaID: normalizeId(item.PlantaID || item.PlantaId)
+              CaminhaoId: normalizeId(item.CaminhaoId || item.CaminhaoID || item.id),
+              PlantaID: normalizeId(item.PlantaId || item.PlantaID)
           }));
 
           const normalizedMotoristas = m.map((item: any) => ({ 
               ...item, 
               id: normalizeId(item.id),
-              MotoristaId: normalizeId(item.id),
-              PlantaID: normalizeId(item.PlantaID || item.PlantaId)
+              MotoristaId: normalizeId(item.MotoristaId || item.MotoristaID || item.id),
+              PlantaID: normalizeId(item.PlantaId || item.PlantaID)
           }));
 
           const normalizedUsers = u.map((user: any) => ({
             ...user,
             id: normalizeId(user.id),
-            PlantaID: normalizeId(user.PlantaID || user.PlantaId || user.plantaId)
+            PlantaID: normalizeId(user.PlantaId || user.PlantaID)
           }));
 
           const updatedCurrentUser = prev.currentUser 
-            ? normalizedUsers.find((user: any) => normalizeId(user.LoginUsuario) === normalizeId(prev.currentUser?.LoginUsuario)) || prev.currentUser
+            ? normalizedUsers.find((user: any) => normalizeId(user.LoginUsuario).toLowerCase() === normalizeId(prev.currentUser?.LoginUsuario).toLowerCase()) || prev.currentUser
             : null;
 
           const normalizedCargas = cr.map((item: any) => {
@@ -92,7 +90,7 @@ export const useAppState = () => {
               return {
                   ...item,
                   CargaId: normalizeId(item.id),
-                  PlantaID: normalizeId(item.PlantaID || item.PlantaId),
+                  PlantaID: normalizeId(item.PlantaId || item.PlantaID),
                   CaminhaoId: normalizeId(item.CaminhaoId || item.CaminhaoID),
                   MotoristaId: normalizeId(item.MotoristaId || item.MotoristaID),
                   StatusCarga: status,
@@ -102,6 +100,10 @@ export const useAppState = () => {
                   ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined,
                   KmReal: item.KmReal ? Number(item.KmReal) : undefined,
                   KmPrevisto: item.KmPrevisto ? Number(item.KmPrevisto) : 0,
+                  // Tratamento para nomes com typos ou pontos fornecidos pelo usuário
+                  Diff1_Justificativa: item.Diff1_Jusitificativa || item.Diff1_Justificativa,
+                  Diff2_Atraso: item['Diff2.Atraso'] || item.Diff2_Atraso,
+                  Diff2_Justificativa: item['Diff2.Justificativa'] || item.Diff2_Justificativa
               };
           });
 
@@ -116,8 +118,8 @@ export const useAppState = () => {
           };
       });
     } catch (error: any) {
-      console.error("Erro Crítico na Sincronização:", error);
-      alert(`Falha ao sincronizar com SharePoint: ${error.message}`);
+      console.error("Erro Crítico de Sincronização:", error);
+      alert(`Falha ao conectar com SharePoint: ${error.message}`);
     } finally {
       setLoading(false);
       isConnecting.current = false;
@@ -159,19 +161,19 @@ export const useAppState = () => {
   };
 
   const addPlanta = async (payload: any) => {
-    if (!graph) throw new Error("Aguardando inicialização do serviço Graph...");
+    if (!graph) throw new Error("Sincronizando...");
     try {
         const fields = { 
             Title: payload.NomedaUnidade,
             NomedaUnidade: payload.NomedaUnidade,
-            PlantaID: normalizeId(payload.PlantaID) 
+            PlantaId: normalizeId(payload.PlantaID) 
         };
-        const response = await graph.createItem(LISTS.PLANTAS, fields);
+        const response = await graph.createItem(LISTS.PLANTAS.id, fields);
         const newItem = { ...fields, id: normalizeId(response.id), PlantaID: normalizeId(payload.PlantaID) };
         setState(prev => ({ ...prev, plantas: [...prev.plantas, newItem] }));
         return newItem;
     } catch (error: any) { 
-        alert(`Erro SharePoint: ${error.message}`);
+        alert(`Erro: ${error.message}`);
         throw error; 
     }
   };
@@ -185,9 +187,9 @@ export const useAppState = () => {
             LoginUsuario: payload.LoginUsuario,
             SenhaUsuario: payload.SenhaUsuario,
             NivelAcesso: payload.NivelAcesso,
-            PlantaID: normalizeId(payload.PlantaID)
+            PlantaId: normalizeId(payload.PlantaID)
         };
-        const response = await graph.createItem(LISTS.USUARIOS, fields);
+        const response = await graph.createItem(LISTS.USUARIOS.id, fields);
         const newItem = { ...payload, id: normalizeId(response.id), PlantaID: normalizeId(payload.PlantaID) };
         setState(prev => ({ ...prev, usuarios: [...prev.usuarios, newItem] }));
         return newItem;
@@ -201,7 +203,7 @@ export const useAppState = () => {
         const cam = state.caminhoes.find(c => normalizeId(c.CaminhaoId) === camId);
         const fields = {
             Title: cam?.Placa || 'Nova Carga',
-            PlantaID: normalizeId(payload.PlantaID),
+            PlantaId: normalizeId(payload.PlantaID),
             CaminhaoId: normalizeId(payload.CaminhaoId),
             MotoristaId: normalizeId(payload.MotoristaId),
             TipoCarga: payload.TipoCarga,
@@ -211,7 +213,7 @@ export const useAppState = () => {
             DataInicio: payload.DataInicio.toISOString(),
             VoltaPrevista: payload.VoltaPrevista.toISOString()
         };
-        const response = await graph.createItem(LISTS.CARGAS, fields);
+        const response = await graph.createItem(LISTS.CARGAS.id, fields);
         const newItem = { 
             ...fields, 
             CargaId: normalizeId(response.id), 
@@ -242,12 +244,12 @@ export const useAppState = () => {
             KmReal: updated.KmReal,
             ChegadaReal: updated.ChegadaReal?.toISOString(),
             Diff1_Gap: updated.Diff1_Gap,
-            Diff1_Justificativa: updated.Diff1_Justificativa,
-            Diff2_Atraso: updated.Diff2_Atraso,
-            Diff2_Justificativa: updated.Diff2_Justificativa,
-            PlantaID: normalizeId(updated.PlantaID)
+            Diff1_Jusitificativa: updated.Diff1_Justificativa, // Usando o nome fornecido com typo
+            ['Diff2.Atraso']: updated.Diff2_Atraso, // Usando o nome com ponto conforme pedido
+            ['Diff2.Justificativa']: updated.Diff2_Justificativa,
+            PlantaId: normalizeId(updated.PlantaID)
         };
-        await graph.updateItem(LISTS.CARGAS, updated.CargaId, fields);
+        await graph.updateItem(LISTS.CARGAS.id, updated.CargaId, fields);
         setState(prev => ({
             ...prev,
             cargas: prev.cargas.map(c => normalizeId(c.CargaId) === normalizeId(updated.CargaId) ? { ...updated } : c)
@@ -258,30 +260,30 @@ export const useAppState = () => {
   const addCaminhao = async (payload: any) => {
     if (!graph) return;
     try {
-        const fields = { Title: payload.Placa, Placa: payload.Placa, PlantaID: normalizeId(payload.PlantaID) };
-        const response = await graph.createItem(LISTS.CAMINHOES, fields);
+        const fields = { Title: payload.Placa, Placa: payload.Placa, PlantaId: normalizeId(payload.PlantaID) };
+        const response = await graph.createItem(LISTS.CAMINHOES.id, fields);
         const newItem = { ...fields, id: normalizeId(response.id), CaminhaoId: normalizeId(response.id), PlantaID: normalizeId(payload.PlantaID) };
         setState(prev => ({ ...prev, caminhoes: [...prev.caminhoes, newItem] }));
         return newItem;
-    } catch (error: any) { alert(`Erro ao criar caminhão: ${error.message}`); }
+    } catch (error: any) { alert(`Erro: ${error.message}`); }
   };
 
   const addMotorista = async (payload: any) => {
     if (!graph) return;
     try {
-        const fields = { Title: payload.NomedoMotorista, NomedoMotorista: payload.NomedoMotorista, PlantaID: normalizeId(payload.PlantaID) };
-        const response = await graph.createItem(LISTS.MOTORISTAS, fields);
+        const fields = { Title: payload.NomedoMotorista, NomedoMotorista: payload.NomedoMotorista, PlantaId: normalizeId(payload.PlantaID) };
+        const response = await graph.createItem(LISTS.MOTORISTAS.id, fields);
         const newItem = { ...fields, id: normalizeId(response.id), MotoristaId: normalizeId(response.id), PlantaID: normalizeId(payload.PlantaID) };
         setState(prev => ({ ...prev, motoristas: [...prev.motoristas, newItem] }));
         return newItem;
-    } catch (error: any) { alert(`Erro ao criar motorista: ${error.message}`); }
+    } catch (error: any) { alert(`Erro: ${error.message}`); }
   };
 
-  const deletePlanta = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.PLANTAS, id); setState(prev => ({ ...prev, plantas: prev.plantas.filter(p => normalizeId(p.id) !== normalizeId(id)) })); } };
-  const deleteCaminhao = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.CAMINHOES, id); setState(prev => ({ ...prev, caminhoes: prev.caminhoes.filter(c => normalizeId(c.id) !== normalizeId(id)) })); } };
-  const deleteMotorista = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.MOTORISTAS, id); setState(prev => ({ ...prev, motoristas: prev.motoristas.filter(m => normalizeId(m.id) !== normalizeId(id)) })); } };
-  const deleteUsuario = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.USUARIOS, id); setState(prev => ({ ...prev, usuarios: prev.usuarios.filter(u => normalizeId(u.id) !== normalizeId(id)) })); } };
-  const deleteCarga = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.CARGAS, id); setState(prev => ({ ...prev, cargas: prev.cargas.filter(c => normalizeId(c.CargaId) !== normalizeId(id)) })); } };
+  const deletePlanta = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.PLANTAS.id, id); setState(prev => ({ ...prev, plantas: prev.plantas.filter(p => normalizeId(p.id) !== normalizeId(id)) })); } };
+  const deleteCaminhao = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.CAMINHOES.id, id); setState(prev => ({ ...prev, caminhoes: prev.caminhoes.filter(c => normalizeId(c.id) !== normalizeId(id)) })); } };
+  const deleteMotorista = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.MOTORISTAS.id, id); setState(prev => ({ ...prev, motoristas: prev.motoristas.filter(m => normalizeId(m.id) !== normalizeId(id)) })); } };
+  const deleteUsuario = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.USUARIOS.id, id); setState(prev => ({ ...prev, usuarios: prev.usuarios.filter(u => normalizeId(u.id) !== normalizeId(id)) })); } };
+  const deleteCarga = async (id: string) => { if (graph) { await graph.deleteItem(LISTS.CARGAS.id, id); setState(prev => ({ ...prev, cargas: prev.cargas.filter(c => normalizeId(c.CargaId) !== normalizeId(id)) })); } };
 
   const setCurrentUser = (u: Usuario | null) => {
       if (u) {
