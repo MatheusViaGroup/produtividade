@@ -5,13 +5,13 @@ export type LoadStatus = 'PENDENTE' | 'CONCLUIDO';
 
 export interface Planta {
   'NomedaUnidade': string;
-  'PlantaID': string;
+  'PlantaId': string;
   'id': string;
 }
 
 export interface Caminhao {
   'Placa': string;
-  'PlantaID': string;
+  'PlantaId': string;
   'CaminhaoId': string;
   'id': string;
 }
@@ -19,7 +19,7 @@ export interface Caminhao {
 export interface Motorista {
   'NomedoMotorista': string;
   'MotoristaId': string;
-  'PlantaID': string;
+  'PlantaId': string;
   'id': string;
 }
 
@@ -28,13 +28,13 @@ export interface Usuario {
   'LoginUsuario': string;
   'SenhaUsuario': string;
   'NivelAcesso': Role;
-  'PlantaID'?: string;
+  'PlantaId'?: string;
   'id': string;
 }
 
 export interface Carga {
   'CargaId': string;
-  'PlantaID': string;
+  'PlantaId': string;
   'CaminhaoId': string;
   'MotoristaId': string;
   'TipoCarga': LoadType;

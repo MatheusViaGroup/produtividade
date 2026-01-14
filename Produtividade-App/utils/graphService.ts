@@ -26,7 +26,6 @@ export async function getMsal() {
     return msalInstance;
 }
 
-// Configuração única baseada nas novas informações
 const SITE_CONFIG = {
     host: "vialacteoscombr.sharepoint.com",
     path: "/sites/Powerapps"
@@ -51,14 +50,13 @@ export class GraphService {
     }
 
     async resolveSites() {
-        console.log("Resolvendo site principal Powerapps...");
         try {
             const site = await this.client.api(`/sites/${SITE_CONFIG.host}:${SITE_CONFIG.path}`).get();
             this.siteId = site.id;
-            console.log("✅ Site Powerapps resolvido:", site.id);
+            console.log("✅ Conectado ao SharePoint:", SITE_CONFIG.path);
         } catch (e: any) {
-            console.error("❌ Falha crítica ao acessar o site Powerapps:", e.message);
-            throw new Error(`Não foi possível acessar o site SharePoint da Via Lacteos. Verifique suas permissões.`);
+            console.error("❌ Erro ao conectar ao site:", e.message);
+            throw new Error(`Acesso negado ao site Powerapps. Verifique as permissões do Azure.`);
         }
     }
 
@@ -78,11 +76,9 @@ export class GraphService {
         }
 
         try {
-            const tokenResponse = await msalApp.acquireTokenSilent({ scopes, account: accounts[0] });
-            return tokenResponse.accessToken;
+            return (await msalApp.acquireTokenSilent({ scopes, account: accounts[0] })).accessToken;
         } catch (error) {
-            const loginResponse = await msalApp.acquireTokenPopup({ scopes, account: accounts[0] });
-            return loginResponse.accessToken;
+            return (await msalApp.acquireTokenPopup({ scopes, account: accounts[0] })).accessToken;
         }
     }
 
@@ -92,7 +88,7 @@ export class GraphService {
             const response = await this.client
                 .api(`/sites/${this.siteId}/lists/${listId}/items`)
                 .expand("fields")
-                .top(2000)
+                .top(5000)
                 .get();
             
             return response.value.map((item: any) => ({
@@ -106,21 +102,18 @@ export class GraphService {
     }
 
     async createItem(listId: string, fields: any) {
-        if (!this.siteId) throw new Error("Serviço não inicializado.");
         return await this.client
             .api(`/sites/${this.siteId}/lists/${listId}/items`)
             .post({ fields });
     }
 
     async updateItem(listId: string, itemId: string, fields: any) {
-        if (!this.siteId) throw new Error("Serviço não inicializado.");
         return await this.client
             .api(`/sites/${this.siteId}/lists/${listId}/items/${itemId}/fields`)
             .patch(fields);
     }
 
     async deleteItem(listId: string, itemId: string) {
-        if (!this.siteId) throw new Error("Serviço não inicializado.");
         return await this.client
             .api(`/sites/${this.siteId}/lists/${listId}/items/${itemId}`)
             .delete();

@@ -129,7 +129,8 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         const tipoCarga: LoadType = eventoStr.includes('COMBINADA') ? 'COMBINADA 2' : 'CHEIA';
                         const voltaPrevista = calculateExpectedReturn(dataInicio, kmPrevisto, tipoCarga);
                         await actions.addCarga({
-                            'PlantaID': planta['PlantaID'],
+                            // Fix: Rename PlantaID to PlantaId
+                            'PlantaId': planta['PlantaId'],
                             'CaminhaoId': caminhao['CaminhaoId'],
                             'MotoristaId': motorista['MotoristaId'],
                             'TipoCarga': tipoCarga,
@@ -143,14 +144,16 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         if (!placaStr) throw new Error("Placa ausente");
                         const existing = state.caminhoes.find((c: Caminhao) => c['Placa'].trim().toUpperCase() === placaStr);
                         if (existing) throw new Error(`Caminhão placa '${placaStr}' já cadastrado`);
-                        await actions.addCaminhao({ 'Placa': placaStr, 'PlantaID': planta['PlantaID'] });
+                        // Fix: Rename PlantaID to PlantaId
+                        await actions.addCaminhao({ 'Placa': placaStr, 'PlantaId': planta['PlantaId'] });
                         setResults(prev => [{msg: `Linha ${i+1}: Caminhão ${placaStr} cadastrado`, type: 'success'}, ...prev]);
                     } else if (importType === 'MOTORISTAS') {
                         const nomeStr = String(row['Motoristas coleta'] || '').trim();
                         if (!nomeStr) throw new Error("Nome do motorista ausente");
                         const existing = state.motoristas.find((m: Motorista) => m['NomedoMotorista'].trim().toLowerCase() === nomeStr.toLowerCase());
                         if (existing) throw new Error(`Motorista '${nomeStr}' já cadastrado`);
-                        await actions.addMotorista({ 'NomedoMotorista': nomeStr, 'PlantaID': planta['PlantaID'] });
+                        // Fix: Rename PlantaID to PlantaId
+                        await actions.addMotorista({ 'NomedoMotorista': nomeStr, 'PlantaId': planta['PlantaId'] });
                         setResults(prev => [{msg: `Linha ${i+1}: Motorista ${nomeStr} cadastrado`, type: 'success'}, ...prev]);
                     }
                 } catch (err: any) {
@@ -214,7 +217,8 @@ const PlantasTab = ({ state, searchTerm, actions }: any) => {
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      try { await actions.addPlanta({ NomedaUnidade: nome, PlantaID: id }); setNome(''); setId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
+      // Fix: Use PlantaId instead of PlantaID
+      try { await actions.addPlanta({ NomedaUnidade: nome, PlantaId: id }); setNome(''); setId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
   const items = (state.plantas || []).filter((p: Planta) => p['NomedaUnidade']?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -222,16 +226,18 @@ const PlantasTab = ({ state, searchTerm, actions }: any) => {
     <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
       <FormLayout title="Planta" onSubmit={handleSubmit} loading={loading}>
         <div><label className={labelClass}>Unidade</label><input required type="text" className={inputClass} value={nome} onChange={e => setNome(e.target.value)} /></div>
-        <div><label className={labelClass}>ID GUID (PlantaID)</label><input required type="text" className={inputClass} value={id} onChange={e => setId(e.target.value)} /></div>
+        {/* Fix: ID GUID (PlantaId) label updated */}
+        <div><label className={labelClass}>ID GUID (PlantaId)</label><input required type="text" className={inputClass} value={id} onChange={e => setId(e.target.value)} /></div>
       </FormLayout>
       <div className="lg:col-span-2">
+        {/* Fix: headers and list updated to use PlantaId */}
         <ListTable headers={['Unidade', 'ID']} items={items} 
           renderRow={(p: Planta) => (
-            <tr key={p.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{p['NomedaUnidade']}</td><td className="px-6 py-4 text-xs font-mono text-gray-400">{p['PlantaID']}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deletePlanta(p.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
+            <tr key={p.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{p['NomedaUnidade']}</td><td className="px-6 py-4 text-xs font-mono text-gray-400">{p['PlantaId']}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deletePlanta(p.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
           )}
           renderCard={(p: Planta) => (
             <div key={p.id} className="bg-white p-5 rounded-2xl border border-blue-50 flex justify-between items-center shadow-sm">
-                <div><div className="font-bold text-gray-800 text-sm">{p['NomedaUnidade']}</div><div className="text-[10px] text-gray-400 font-mono mt-1">{p['PlantaID']}</div></div>
+                <div><div className="font-bold text-gray-800 text-sm">{p['NomedaUnidade']}</div><div className="text-[10px] text-gray-400 font-mono mt-1">{p['PlantaId']}</div></div>
                 <button onClick={() => actions.deletePlanta(p.id)} className="p-3 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16} /></button>
             </div>
           )}
@@ -243,12 +249,14 @@ const PlantasTab = ({ state, searchTerm, actions }: any) => {
 
 const CaminhoesTab = ({ state, searchTerm, actions }: any) => {
   const [placa, setPlaca] = useState('');
-  const [plantaID, setPlantaID] = useState('');
+  // Fix: use plantaId local state
+  const [plantaId, setPlantaId] = useState('');
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      try { await actions.addCaminhao({ Placa: placa.toUpperCase(), PlantaID: plantaID }); setPlaca(''); setPlantaID(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
+      // Fix: use PlantaId instead of PlantaID
+      try { await actions.addCaminhao({ Placa: placa.toUpperCase(), PlantaId: plantaId }); setPlaca(''); setPlantaId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
   const items = (state.caminhoes || []).filter((c: Caminhao) => c['Placa']?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -256,16 +264,19 @@ const CaminhoesTab = ({ state, searchTerm, actions }: any) => {
     <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-8">
       <FormLayout title="Caminhão" onSubmit={handleSubmit} loading={loading}>
         <div><label className={labelClass}>Placa</label><input required type="text" className={inputClass} placeholder="ABC-1234" value={placa} onChange={e => setPlaca(e.target.value)} /></div>
-        <div><label className={labelClass}>Planta</label><select className={inputClass} required value={plantaID} onChange={e => setPlantaID(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p['PlantaID']} value={p['PlantaID']}>{p['NomedaUnidade']}</option>)}</select></div>
+        {/* Fix: Select value and key updated to use PlantaId */}
+        <div><label className={labelClass}>Planta</label><select className={inputClass} required value={plantaId} onChange={e => setPlantaId(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p['PlantaId']} value={p['PlantaId']}>{p['NomedaUnidade']}</option>)}</select></div>
       </FormLayout>
       <div className="lg:col-span-2">
         <ListTable headers={['Placa', 'Planta']} items={items} 
           renderRow={(c: Caminhao) => (
-            <tr key={c.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{c['Placa']}</td><td className="px-6 py-4 text-sm">{state.plantas.find((p:any)=>String(p.PlantaID)===String(c.PlantaID))?.NomedaUnidade}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deleteCaminhao(c.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
+            // Fix: find check updated to use PlantaId
+            <tr key={c.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{c['Placa']}</td><td className="px-6 py-4 text-sm">{state.plantas.find((p:any)=>String(p.PlantaId)===String(c.PlantaId))?.NomedaUnidade}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deleteCaminhao(c.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
           )}
           renderCard={(c: Caminhao) => (
+            // Fix: find check updated to use PlantaId
             <div key={c.id} className="bg-white p-5 rounded-2xl border border-blue-50 flex justify-between items-center shadow-sm">
-                <div><div className="font-black text-blue-900 text-base italic">{c['Placa']}</div><div className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{state.plantas.find((p:any)=>String(p.PlantaID)===String(c.PlantaID))?.NomedaUnidade}</div></div>
+                <div><div className="font-black text-blue-900 text-base italic">{c['Placa']}</div><div className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{state.plantas.find((p:any)=>String(p.PlantaId)===String(c.PlantaId))?.NomedaUnidade}</div></div>
                 <button onClick={() => actions.deleteCaminhao(c.id)} className="p-3 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16} /></button>
             </div>
           )}
@@ -277,12 +288,14 @@ const CaminhoesTab = ({ state, searchTerm, actions }: any) => {
 
 const MotoristasTab = ({ state, searchTerm, actions }: any) => {
   const [nome, setNome] = useState('');
-  const [plantaID, setPlantaID] = useState('');
+  // Fix: use plantaId local state
+  const [plantaId, setPlantaId] = useState('');
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      try { await actions.addMotorista({ NomedoMotorista: nome, PlantaID: plantaID }); setNome(''); setPlantaID(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
+      // Fix: use PlantaId instead of PlantaID
+      try { await actions.addMotorista({ NomedoMotorista: nome, PlantaId: plantaId }); setNome(''); setPlantaId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
   const items = (state.motoristas || []).filter((m: Motorista) => m['NomedoMotorista']?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -290,16 +303,19 @@ const MotoristasTab = ({ state, searchTerm, actions }: any) => {
     <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-8">
       <FormLayout title="Motorista" onSubmit={handleSubmit} loading={loading}>
         <div><label className={labelClass}>Nome</label><input required type="text" className={inputClass} value={nome} onChange={e => setNome(e.target.value)} /></div>
-        <div><label className={labelClass}>Planta</label><select className={inputClass} required value={plantaID} onChange={e => setPlantaID(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p['PlantaID']} value={p['PlantaID']}>{p['NomedaUnidade']}</option>)}</select></div>
+        {/* Fix: Select value and key updated to use PlantaId */}
+        <div><label className={labelClass}>Planta</label><select className={inputClass} required value={plantaId} onChange={e => setPlantaId(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p['PlantaId']} value={p['PlantaId']}>{p['NomedaUnidade']}</option>)}</select></div>
       </FormLayout>
       <div className="lg:col-span-2">
         <ListTable headers={['Motorista', 'Planta']} items={items} 
           renderRow={(m: Motorista) => (
-            <tr key={m.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{m['NomedoMotorista']}</td><td className="px-6 py-4 text-sm">{state.plantas.find((p:any)=>String(p.PlantaID)===String(m.PlantaID))?.NomedaUnidade}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deleteMotorista(m.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
+            // Fix: find check updated to use PlantaId
+            <tr key={m.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{m['NomedoMotorista']}</td><td className="px-6 py-4 text-sm">{state.plantas.find((p:any)=>String(p.PlantaId)===String(m.PlantaId))?.NomedaUnidade}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deleteMotorista(m.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
           )}
           renderCard={(m: Motorista) => (
+            // Fix: find check updated to use PlantaId
             <div key={m.id} className="bg-white p-5 rounded-2xl border border-blue-50 flex justify-between items-center shadow-sm">
-                <div><div className="font-bold text-gray-800 text-sm">{m['NomedoMotorista']}</div><div className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{state.plantas.find((p:any)=>String(p.PlantaID)===String(m.PlantaID))?.NomedaUnidade}</div></div>
+                <div><div className="font-bold text-gray-800 text-sm">{m['NomedoMotorista']}</div><div className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{state.plantas.find((p:any)=>String(p.PlantaId)===String(m.PlantaId))?.NomedaUnidade}</div></div>
                 <button onClick={() => actions.deleteMotorista(m.id)} className="p-3 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16} /></button>
             </div>
           )}
@@ -314,12 +330,14 @@ const UsuariosTab = ({ state, searchTerm, actions }: any) => {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [nivel, setNivel] = useState<Role>('Operador');
-  const [plantaID, setPlantaID] = useState('');
+  // Fix: use plantaId local state
+  const [plantaId, setPlantaId] = useState('');
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      try { await actions.addUsuario({ NomeCompleto: nome, LoginUsuario: login, SenhaUsuario: senha, NivelAcesso: nivel, PlantaID: plantaID }); setNome(''); setLogin(''); setSenha(''); setPlantaID(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
+      // Fix: use PlantaId instead of PlantaID
+      try { await actions.addUsuario({ NomeCompleto: nome, LoginUsuario: login, SenhaUsuario: senha, NivelAcesso: nivel, PlantaId: plantaId }); setNome(''); setLogin(''); setSenha(''); setPlantaId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
   const items = (state.usuarios || []).filter((u: Usuario) => u['NomeCompleto']?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -333,7 +351,8 @@ const UsuariosTab = ({ state, searchTerm, actions }: any) => {
         </div>
         <div><label className={labelClass}>Nível</label><select className={inputClass} value={nivel} onChange={e => setNivel(e.target.value as Role)}><option value="Operador">Operador</option><option value="Admin">Admin</option></select></div>
         {nivel === 'Operador' && (
-            <div><label className={labelClass}>Planta Vinculada</label><select className={inputClass} required value={plantaID} onChange={e => setPlantaID(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p.PlantaID} value={p.PlantaID}>{p['NomedaUnidade']}</option>)}</select></div>
+            // Fix: select and option updated to use PlantaId
+            <div><label className={labelClass}>Planta Vinculada</label><select className={inputClass} required value={plantaId} onChange={e => setPlantaId(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p.PlantaId} value={p.PlantaId}>{p['NomedaUnidade']}</option>)}</select></div>
         )}
       </FormLayout>
       <div className="lg:col-span-2">

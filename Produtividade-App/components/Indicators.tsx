@@ -11,11 +11,12 @@ interface IndicatorsProps {
 
 export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
   const currentUser = state.currentUser;
-  const userPlantID = currentUser?.PlantaID;
+  // Fix: Rename to userPlantId
+  const userPlantId = currentUser?.PlantaId;
 
   const [dateStart, setDateStart] = useState(format(subMonths(new Date(), 1), 'yyyy-MM-dd'));
   const [dateEnd, setDateEnd] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantID || 'all');
+  const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantId || 'all');
 
   const cargas = state.cargas || [];
   const plantas = state.plantas || [];
@@ -23,8 +24,9 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
   const filteredCargas = useMemo(() => {
     return cargas.filter((c: Carga) => {
       const isFinalizada = c['StatusCarga'] === 'CONCLUIDO';
-      const currentViewPlant = userPlantID || selectedPlanta;
-      const isPlantaMatch = currentViewPlant === 'all' || String(c['PlantaID']) === String(currentViewPlant);
+      // Fix: use userPlantId and PlantaId
+      const currentViewPlant = userPlantId || selectedPlanta;
+      const isPlantaMatch = currentViewPlant === 'all' || String(c['PlantaId']) === String(currentViewPlant);
       const date = new Date(c['DataInicio']);
       const isDateMatch = isWithinInterval(date, {
         start: startOfDay(new Date(dateStart)),
@@ -32,7 +34,7 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
       });
       return isFinalizada && isPlantaMatch && isDateMatch;
     });
-  }, [cargas, userPlantID, selectedPlanta, dateStart, dateEnd]);
+  }, [cargas, userPlantId, selectedPlanta, dateStart, dateEnd]);
 
   const metrics = useMemo(() => {
     if (filteredCargas.length === 0) return { avgRouteTime: 0, avgKm: 0, avgUnloadTime: 0, totalKm: 0, kmPerDay: 0 };
@@ -56,8 +58,9 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
   const chartData = useMemo(() => {
     const monthlyData: Record<string, number> = {};
-    const currentViewPlant = userPlantID || selectedPlanta;
-    const allFinalized = cargas.filter((c: Carga) => c['StatusCarga'] === 'CONCLUIDO' && (currentViewPlant === 'all' || String(c['PlantaID']) === String(currentViewPlant)));
+    // Fix: use userPlantId and PlantaId
+    const currentViewPlant = userPlantId || selectedPlanta;
+    const allFinalized = cargas.filter((c: Carga) => c['StatusCarga'] === 'CONCLUIDO' && (currentViewPlant === 'all' || String(c['PlantaId']) === String(currentViewPlant)));
     allFinalized.forEach(c => {
         const month = format(new Date(c.DataInicio), 'MM/yyyy');
         monthlyData[month] = (monthlyData[month] || 0) + (c.KmReal || 0);
@@ -67,7 +70,7 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
           const [mB, yB] = b.name.split('/').map(Number);
           return (yA * 12 + mA) - (yB * 12 + mB);
       });
-  }, [cargas, userPlantID, selectedPlanta]);
+  }, [cargas, userPlantId, selectedPlanta]);
 
   const Card = ({ title, value, unit, icon: Icon, color }: any) => (
     <div className="bg-white p-6 rounded-[2rem] border border-blue-50 shadow-sm flex items-center gap-5 hover:shadow-md transition-shadow">
@@ -82,7 +85,8 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
   return (
     <div className="space-y-6 pb-12">
       <div className="bg-white p-6 rounded-[2.5rem] border border-blue-50 shadow-sm flex flex-col sm:flex-row gap-4 items-end">
-        <div className="flex-1 w-full space-y-1.5"><label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Unidade</label><div className="relative"><MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} /><select disabled={!!userPlantID} value={selectedPlanta} onChange={e => setSelectedPlanta(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none disabled:opacity-50">{!userPlantID && <option value="all">Todas as Plantas</option>}{plantas.map((p: Planta) => <option key={p.PlantaID} value={p.PlantaID}>{p.NomedaUnidade}</option>)}</select></div></div>
+        {/* Fix: select updated to use PlantaId and userPlantId */}
+        <div className="flex-1 w-full space-y-1.5"><label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Unidade</label><div className="relative"><MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} /><select disabled={!!userPlantId} value={selectedPlanta} onChange={e => setSelectedPlanta(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none disabled:opacity-50">{!userPlantId && <option value="all">Todas as Plantas</option>}{plantas.map((p: Planta) => <option key={p.PlantaId} value={p.PlantaId}>{p.NomedaUnidade}</option>)}</select></div></div>
         <div className="flex-1 w-full space-y-1.5"><label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Início</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} /><input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" /></div></div>
         <div className="flex-1 w-full space-y-1.5"><label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Fim</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} /><input type="date" value={dateEnd} onChange={e => setDateEnd(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" /></div></div>
       </div>

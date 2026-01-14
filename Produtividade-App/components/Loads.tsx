@@ -20,9 +20,10 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const [now, setNow] = useState(new Date());
 
   const currentUser = state.currentUser;
-  const userPlantID = currentUser?.PlantaID;
+  // Fix: Rename to userPlantId
+  const userPlantId = currentUser?.PlantaId;
 
-  const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantID || 'all');
+  const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantId || 'all');
   const [selectedMotorista, setSelectedMotorista] = useState<string>('all');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -32,16 +33,18 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     return () => clearInterval(timer);
   }, []);
 
-  const availableCaminhoes = (state.caminhoes || []).filter((c: Caminhao) => !userPlantID || String(c.PlantaID) === String(userPlantID));
-  const availableMotoristas = (state.motoristas || []).filter((m: Motorista) => !userPlantID || String(m.PlantaID) === String(userPlantID));
+  // Fix: use userPlantId and PlantaId
+  const availableCaminhoes = (state.caminhoes || []).filter((c: Caminhao) => !userPlantId || String(c.PlantaId) === String(userPlantId));
+  const availableMotoristas = (state.motoristas || []).filter((m: Motorista) => !userPlantId || String(m.PlantaId) === String(userPlantId));
 
   const visibleCargas = useMemo(() => {
     return (state.cargas || []).filter((c: Carga) => {
       const isStatusMatch = filter === 'ATIVAS' ? c.StatusCarga === 'PENDENTE' : c.StatusCarga === 'CONCLUIDO';
       if (!isStatusMatch) return false;
 
-      const currentViewPlant = userPlantID || selectedPlanta;
-      if (currentViewPlant !== 'all' && String(c.PlantaID) !== String(currentViewPlant)) return false;
+      // Fix: use userPlantId and PlantaId
+      const currentViewPlant = userPlantId || selectedPlanta;
+      if (currentViewPlant !== 'all' && String(c.PlantaId) !== String(currentViewPlant)) return false;
       
       if (selectedMotorista !== 'all' && String(c.MotoristaId) !== String(selectedMotorista)) return false;
 
@@ -55,7 +58,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       if (filter === 'ATIVAS') return new Date(b.DataCriacao).getTime() - new Date(a.DataCriacao).getTime();
       return (new Date(b.ChegadaReal || 0).getTime()) - (new Date(a.ChegadaReal || 0).getTime());
     });
-  }, [state.cargas, filter, userPlantID, selectedPlanta, selectedMotorista, dateStart, dateEnd]);
+  }, [state.cargas, filter, userPlantId, selectedPlanta, selectedMotorista, dateStart, dateEnd]);
 
   const [formData, setFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0 });
   const [editFormData, setEditFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), voltaPrevista: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0 });
@@ -96,7 +99,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     if (!caminhao) return;
     const voltaPrevista = calculateExpectedReturn(new Date(formData.dataInicio), formData.kmPrevisto, formData.tipo);
     actions.addCarga({
-      PlantaID: caminhao.PlantaID,
+      // Fix: use PlantaId
+      PlantaId: caminhao.PlantaId,
       CaminhaoId: formData.caminhaoId,
       MotoristaId: formData.motoristaId,
       TipoCarga: formData.tipo,
@@ -137,13 +141,15 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} />
               <select 
-                  disabled={!!userPlantID}
+                  // Fix: use userPlantId
+                  disabled={!!userPlantId}
                   value={selectedPlanta} 
                   onChange={e => setSelectedPlanta(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none text-sm transition-all disabled:opacity-50"
               >
-                  {!userPlantID && <option value="all">Todas as Plantas</option>}
-                  {state.plantas.map((p: Planta) => <option key={p.PlantaID} value={p.PlantaID}>{p.NomedaUnidade}</option>)}
+                  {/* Fix: use userPlantId and PlantaId */}
+                  {!userPlantId && <option value="all">Todas as Plantas</option>}
+                  {state.plantas.map((p: Planta) => <option key={p.PlantaId} value={p.PlantaId}>{p.NomedaUnidade}</option>)}
               </select>
             </div>
           </div>
@@ -199,7 +205,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                       <div className="flex-1 min-w-0">
                           <p className="text-xl font-black text-gray-900 italic leading-none truncate uppercase tracking-tighter">{state.caminhoes.find((c: any) => String(c.CaminhaoId) === String(carga.CaminhaoId))?.Placa || '---'}</p>
                           <div className="flex items-center gap-1 mt-1 text-blue-600 opacity-60">
-                              <MapPin size={10} /><p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => String(p.PlantaID) === String(carga.PlantaID))?.NomedaUnidade}</p>
+                              {/* Fix: find check updated to use PlantaId */}
+                              <MapPin size={10} /><p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => String(p.PlantaId) === String(carga.PlantaId))?.NomedaUnidade}</p>
                           </div>
                       </div>
                   </div>
