@@ -102,8 +102,10 @@ export const useAppState = () => {
 
           const normalizedJustificativas = j.map((item: any) => ({
               id: normalizeId(item.id),
-              Texto: item.Texto || item.Title,
-              Tipo: item.Tipo || 'GAP'
+              // Título (Title) é o texto da justificativa
+              Texto: item.Title || item.Texto,
+              // segmento é o tipo/segmento da justificativa
+              Tipo: (item.segmento || item.Tipo || 'GAP').toUpperCase() as 'GAP' | 'ATRASO'
           }));
 
           const updatedCurrentUser = prev.currentUser 
@@ -155,7 +157,8 @@ export const useAppState = () => {
 
   const addJustificativa = async (payload: any) => {
     if (!graph) return;
-    const fields = { Title: payload.Texto, Texto: payload.Texto, Tipo: payload.Tipo };
+    // Mapeamento conforme colunas do SharePoint: Title e segmento
+    const fields = { Title: payload.Texto, segmento: payload.Tipo };
     const response = await graph.createItem(LISTS.JUSTIFICATIVAS.id, fields);
     setState(prev => ({ ...prev, justificativas: [...prev.justificativas, { id: normalizeId(response.id), Texto: payload.Texto, Tipo: payload.Tipo }] }));
   };

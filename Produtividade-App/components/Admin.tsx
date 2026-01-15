@@ -245,7 +245,7 @@ const JustificativasTab = ({ state, searchTerm, actions }: any) => {
       </FormLayout>
       <div className="lg:col-span-2">
         <ListTable 
-          headers={['Texto', 'Tipo']} 
+          headers={['Texto', 'Segmento']} 
           items={items} 
           renderRow={(j: Justificativa) => (
             <tr key={j.id}>
