@@ -1,14 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Planta, Caminhao, Usuario, Motorista, Role, LoadType } from '../types';
-import { Trash2, Search, PlusCircle, LayoutGrid, List, FileUp, CheckCircle, AlertCircle, Loader2, Truck, Box, UserPlus, FileSpreadsheet } from 'lucide-react';
+import { Planta, Caminhao, Usuario, Motorista, Role, LoadType, Justificativa } from '../types';
+import { Trash2, Search, PlusCircle, LayoutGrid, List, FileUp, CheckCircle, AlertCircle, Loader2, Truck, Box, UserPlus, FileSpreadsheet, MessageSquare } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { calculateExpectedReturn } from '../utils/logic';
 
 interface AdminProps {
   state: any;
   actions: any;
-  activeSubTab: 'plantas' | 'caminhoes' | 'usuarios' | 'motoristas' | 'importar';
+  activeSubTab: 'plantas' | 'caminhoes' | 'usuarios' | 'motoristas' | 'importar' | 'justificativas';
   setActiveSubTab: (tab: any) => void;
   initialImportType: 'CARGAS' | 'CAMINHOES' | 'MOTORISTAS';
 }
@@ -129,7 +129,6 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         const tipoCarga: LoadType = eventoStr.includes('COMBINADA') ? 'COMBINADA 2' : 'CHEIA';
                         const voltaPrevista = calculateExpectedReturn(dataInicio, kmPrevisto, tipoCarga);
                         await actions.addCarga({
-                            // Fix: Rename PlantaID to PlantaId
                             'PlantaId': planta['PlantaId'],
                             'CaminhaoId': caminhao['CaminhaoId'],
                             'MotoristaId': motorista['MotoristaId'],
@@ -144,7 +143,6 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         if (!placaStr) throw new Error("Placa ausente");
                         const existing = state.caminhoes.find((c: Caminhao) => c['Placa'].trim().toUpperCase() === placaStr);
                         if (existing) throw new Error(`Caminhão placa '${placaStr}' já cadastrado`);
-                        // Fix: Rename PlantaID to PlantaId
                         await actions.addCaminhao({ 'Placa': placaStr, 'PlantaId': planta['PlantaId'] });
                         setResults(prev => [{msg: `Linha ${i+1}: Caminhão ${placaStr} cadastrado`, type: 'success'}, ...prev]);
                     } else if (importType === 'MOTORISTAS') {
@@ -152,7 +150,6 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         if (!nomeStr) throw new Error("Nome do motorista ausente");
                         const existing = state.motoristas.find((m: Motorista) => m['NomedoMotorista'].trim().toLowerCase() === nomeStr.toLowerCase());
                         if (existing) throw new Error(`Motorista '${nomeStr}' já cadastrado`);
-                        // Fix: Rename PlantaID to PlantaId
                         await actions.addMotorista({ 'NomedoMotorista': nomeStr, 'PlantaId': planta['PlantaId'] });
                         setResults(prev => [{msg: `Linha ${i+1}: Motorista ${nomeStr} cadastrado`, type: 'success'}, ...prev]);
                     }
@@ -210,6 +207,74 @@ const ImportTab = ({ state, actions, initialType }: any) => {
     );
 };
 
+const JustificativasTab = ({ state, searchTerm, actions }: any) => {
+  const [texto, setTexto] = useState('');
+  const [tipo, setTipo] = useState<'GAP' | 'ATRASO'>('GAP');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await actions.addJustificativa({ Texto: texto, Tipo: tipo });
+      setTexto('');
+    } catch (err: any) {
+      alert(`Erro: ${err.message}`);
+    }
+    setLoading(false);
+  };
+
+  const items = (state.justificativas || []).filter((j: Justificativa) => 
+    j.Texto.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <FormLayout title="Justificativa" onSubmit={handleSubmit} loading={loading}>
+        <div>
+          <label className={labelClass}>Texto da Justificativa</label>
+          <input required type="text" className={inputClass} value={texto} onChange={e => setTexto(e.target.value)} placeholder="Ex: Atraso no carregamento" />
+        </div>
+        <div>
+          <label className={labelClass}>Segmento</label>
+          <select className={inputClass} value={tipo} onChange={e => setTipo(e.target.value as 'GAP' | 'ATRASO')}>
+            <option value="GAP">Atraso entre Rotas (GAP)</option>
+            <option value="ATRASO">Justificativa Atraso (ATRASO)</option>
+          </select>
+        </div>
+      </FormLayout>
+      <div className="lg:col-span-2">
+        <ListTable 
+          headers={['Texto', 'Tipo']} 
+          items={items} 
+          renderRow={(j: Justificativa) => (
+            <tr key={j.id}>
+              <td className="px-6 py-4 font-bold text-gray-800 text-sm">{j.Texto}</td>
+              <td className="px-6 py-4">
+                <span className={`px-2 py-1 rounded text-[9px] font-black uppercase ${j.Tipo === 'GAP' ? 'bg-blue-50 text-blue-600' : 'bg-orange-50 text-orange-600'}`}>
+                  {j.Tipo === 'GAP' ? 'GAP' : 'ATRASO'}
+                </span>
+              </td>
+              <td className="px-6 py-4 text-right">
+                <button onClick={() => actions.deleteJustificativa(j.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button>
+              </td>
+            </tr>
+          )}
+          renderCard={(j: Justificativa) => (
+            <div key={j.id} className="bg-white p-5 rounded-2xl border border-blue-50 flex justify-between items-center shadow-sm">
+                <div>
+                  <div className="font-bold text-gray-800 text-sm">{j.Texto}</div>
+                  <div className={`text-[10px] font-black uppercase mt-1 ${j.Tipo === 'GAP' ? 'text-blue-500' : 'text-orange-500'}`}>{j.Tipo}</div>
+                </div>
+                <button onClick={() => actions.deleteJustificativa(j.id)} className="p-3 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16} /></button>
+            </div>
+          )}
+        />
+      </div>
+    </div>
+  );
+};
+
 const PlantasTab = ({ state, searchTerm, actions }: any) => {
   const [nome, setNome] = useState('');
   const [id, setId] = useState('');
@@ -217,7 +282,6 @@ const PlantasTab = ({ state, searchTerm, actions }: any) => {
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      // Fix: Use PlantaId instead of PlantaID
       try { await actions.addPlanta({ NomedaUnidade: nome, PlantaId: id }); setNome(''); setId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
@@ -226,11 +290,9 @@ const PlantasTab = ({ state, searchTerm, actions }: any) => {
     <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
       <FormLayout title="Planta" onSubmit={handleSubmit} loading={loading}>
         <div><label className={labelClass}>Unidade</label><input required type="text" className={inputClass} value={nome} onChange={e => setNome(e.target.value)} /></div>
-        {/* Fix: ID GUID (PlantaId) label updated */}
         <div><label className={labelClass}>ID GUID (PlantaId)</label><input required type="text" className={inputClass} value={id} onChange={e => setId(e.target.value)} /></div>
       </FormLayout>
       <div className="lg:col-span-2">
-        {/* Fix: headers and list updated to use PlantaId */}
         <ListTable headers={['Unidade', 'ID']} items={items} 
           renderRow={(p: Planta) => (
             <tr key={p.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{p['NomedaUnidade']}</td><td className="px-6 py-4 text-xs font-mono text-gray-400">{p['PlantaId']}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deletePlanta(p.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
@@ -249,13 +311,11 @@ const PlantasTab = ({ state, searchTerm, actions }: any) => {
 
 const CaminhoesTab = ({ state, searchTerm, actions }: any) => {
   const [placa, setPlaca] = useState('');
-  // Fix: use plantaId local state
   const [plantaId, setPlantaId] = useState('');
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      // Fix: use PlantaId instead of PlantaID
       try { await actions.addCaminhao({ Placa: placa.toUpperCase(), PlantaId: plantaId }); setPlaca(''); setPlantaId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
@@ -264,17 +324,14 @@ const CaminhoesTab = ({ state, searchTerm, actions }: any) => {
     <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-8">
       <FormLayout title="Caminhão" onSubmit={handleSubmit} loading={loading}>
         <div><label className={labelClass}>Placa</label><input required type="text" className={inputClass} placeholder="ABC-1234" value={placa} onChange={e => setPlaca(e.target.value)} /></div>
-        {/* Fix: Select value and key updated to use PlantaId */}
         <div><label className={labelClass}>Planta</label><select className={inputClass} required value={plantaId} onChange={e => setPlantaId(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p['PlantaId']} value={p['PlantaId']}>{p['NomedaUnidade']}</option>)}</select></div>
       </FormLayout>
       <div className="lg:col-span-2">
         <ListTable headers={['Placa', 'Planta']} items={items} 
           renderRow={(c: Caminhao) => (
-            // Fix: find check updated to use PlantaId
             <tr key={c.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{c['Placa']}</td><td className="px-6 py-4 text-sm">{state.plantas.find((p:any)=>String(p.PlantaId)===String(c.PlantaId))?.NomedaUnidade}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deleteCaminhao(c.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
           )}
           renderCard={(c: Caminhao) => (
-            // Fix: find check updated to use PlantaId
             <div key={c.id} className="bg-white p-5 rounded-2xl border border-blue-50 flex justify-between items-center shadow-sm">
                 <div><div className="font-black text-blue-900 text-base italic">{c['Placa']}</div><div className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{state.plantas.find((p:any)=>String(p.PlantaId)===String(c.PlantaId))?.NomedaUnidade}</div></div>
                 <button onClick={() => actions.deleteCaminhao(c.id)} className="p-3 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16} /></button>
@@ -288,13 +345,11 @@ const CaminhoesTab = ({ state, searchTerm, actions }: any) => {
 
 const MotoristasTab = ({ state, searchTerm, actions }: any) => {
   const [nome, setNome] = useState('');
-  // Fix: use plantaId local state
   const [plantaId, setPlantaId] = useState('');
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      // Fix: use PlantaId instead of PlantaID
       try { await actions.addMotorista({ NomedoMotorista: nome, PlantaId: plantaId }); setNome(''); setPlantaId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
@@ -303,17 +358,14 @@ const MotoristasTab = ({ state, searchTerm, actions }: any) => {
     <div className="animate-in fade-in duration-300 grid grid-cols-1 lg:grid-cols-3 gap-8">
       <FormLayout title="Motorista" onSubmit={handleSubmit} loading={loading}>
         <div><label className={labelClass}>Nome</label><input required type="text" className={inputClass} value={nome} onChange={e => setNome(e.target.value)} /></div>
-        {/* Fix: Select value and key updated to use PlantaId */}
         <div><label className={labelClass}>Planta</label><select className={inputClass} required value={plantaId} onChange={e => setPlantaId(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p['PlantaId']} value={p['PlantaId']}>{p['NomedaUnidade']}</option>)}</select></div>
       </FormLayout>
       <div className="lg:col-span-2">
         <ListTable headers={['Motorista', 'Planta']} items={items} 
           renderRow={(m: Motorista) => (
-            // Fix: find check updated to use PlantaId
             <tr key={m.id}><td className="px-6 py-4 font-bold text-gray-800 text-sm">{m['NomedoMotorista']}</td><td className="px-6 py-4 text-sm">{state.plantas.find((p:any)=>String(p.PlantaId)===String(m.PlantaId))?.NomedaUnidade}</td><td className="px-6 py-4 text-right"><button onClick={() => actions.deleteMotorista(m.id)} className="text-blue-200 hover:text-red-500 p-2"><Trash2 size={16} /></button></td></tr>
           )}
           renderCard={(m: Motorista) => (
-            // Fix: find check updated to use PlantaId
             <div key={m.id} className="bg-white p-5 rounded-2xl border border-blue-50 flex justify-between items-center shadow-sm">
                 <div><div className="font-bold text-gray-800 text-sm">{m['NomedoMotorista']}</div><div className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{state.plantas.find((p:any)=>String(p.PlantaId)===String(m.PlantaId))?.NomedaUnidade}</div></div>
                 <button onClick={() => actions.deleteMotorista(m.id)} className="p-3 bg-red-50 text-red-500 rounded-xl"><Trash2 size={16} /></button>
@@ -330,13 +382,11 @@ const UsuariosTab = ({ state, searchTerm, actions }: any) => {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [nivel, setNivel] = useState<Role>('Operador');
-  // Fix: use plantaId local state
   const [plantaId, setPlantaId] = useState('');
   const [loading, setLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
-      // Fix: use PlantaId instead of PlantaID
       try { await actions.addUsuario({ NomeCompleto: nome, LoginUsuario: login, SenhaUsuario: senha, NivelAcesso: nivel, PlantaId: plantaId }); setNome(''); setLogin(''); setSenha(''); setPlantaId(''); } catch (err: any) { alert(`Erro: ${err.message}`); }
       setLoading(false);
   };
@@ -351,7 +401,6 @@ const UsuariosTab = ({ state, searchTerm, actions }: any) => {
         </div>
         <div><label className={labelClass}>Nível</label><select className={inputClass} value={nivel} onChange={e => setNivel(e.target.value as Role)}><option value="Operador">Operador</option><option value="Admin">Admin</option></select></div>
         {nivel === 'Operador' && (
-            // Fix: select and option updated to use PlantaId
             <div><label className={labelClass}>Planta Vinculada</label><select className={inputClass} required value={plantaId} onChange={e => setPlantaId(e.target.value)}><option value="">Selecione...</option>{state.plantas.map((p: Planta) => <option key={p.PlantaId} value={p.PlantaId}>{p['NomedaUnidade']}</option>)}</select></div>
         )}
       </FormLayout>
@@ -379,7 +428,7 @@ export const Admin: React.FC<AdminProps> = ({ state, actions, activeSubTab, setA
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8 lg:mb-10 px-1 lg:px-0">
          <h2 className="text-2xl sm:text-3xl font-black text-blue-950 uppercase italic tracking-tight">Gestão SP</h2>
          <div className="flex bg-white lg:bg-blue-50/50 p-1 rounded-2xl w-full sm:w-auto overflow-x-auto no-scrollbar shadow-sm lg:shadow-none border border-blue-50 lg:border-none">
-            {['usuarios', 'plantas', 'caminhoes', 'motoristas'].map((t: any) => (
+            {['usuarios', 'plantas', 'caminhoes', 'motoristas', 'justificativas'].map((t: any) => (
                <button key={t} onClick={() => setActiveSubTab(t)} className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${activeSubTab === t ? 'bg-blue-600 lg:bg-white text-white lg:text-blue-700 shadow-sm' : 'text-blue-800/40'}`}>{t}</button>
             ))}
             <button onClick={() => setActiveSubTab('importar')} className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap flex items-center gap-2 ${activeSubTab === 'importar' ? 'bg-blue-600 text-white shadow-sm' : 'text-blue-700 font-bold'}`}><FileSpreadsheet size={14} /> Importar</button>
@@ -400,6 +449,7 @@ export const Admin: React.FC<AdminProps> = ({ state, actions, activeSubTab, setA
         {activeSubTab === 'plantas' && <PlantasTab state={state} searchTerm={searchTerm} actions={actions} />}
         {activeSubTab === 'caminhoes' && <CaminhoesTab state={state} searchTerm={searchTerm} actions={actions} />}
         {activeSubTab === 'motoristas' && <MotoristasTab state={state} searchTerm={searchTerm} actions={actions} />}
+        {activeSubTab === 'justificativas' && <JustificativasTab state={state} searchTerm={searchTerm} actions={actions} />}
         {activeSubTab === 'importar' && <ImportTab state={state} actions={actions} initialType={initialImportType} />}
       </div>
     </div>

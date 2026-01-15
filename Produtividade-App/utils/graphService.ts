@@ -36,7 +36,8 @@ export const LISTS = {
     USUARIOS: { id: "955d46da-c8d9-432e-9047-faf2beaadf8b" },
     PLANTAS: { id: "2422eb52-73b9-414f-aff9-7e00084a7e5f" },
     CAMINHOES: { id: "4f02e028-69f7-4964-a5e9-f39835f46321" },
-    MOTORISTAS: { id: "da434e30-60f5-43a5-8a30-698247a25f9a" }
+    MOTORISTAS: { id: "da434e30-60f5-43a5-8a30-698247a25f9a" },
+    JUSTIFICATIVAS: { id: "b7875971-70e5-4a11-b054-946258f4a3e7" }
 };
 
 export class GraphService {

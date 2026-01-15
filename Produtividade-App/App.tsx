@@ -84,7 +84,7 @@ const LoginApp: React.FC<{ onLogin: (u: string, p: string) => boolean, onBack: (
 const App: React.FC = () => {
   const { state, loading, isAuthenticated, loginLocal, connectToSharePoint, logout, setCurrentUser, ...actions } = useAppState();
   const [activeTab, setActiveTab] = useState<'CARGAS' | 'INDICADORES' | 'ADMIN'>('CARGAS');
-  const [adminSubTab, setAdminSubTab] = useState<'usuarios' | 'plantas' | 'caminhoes' | 'motoristas' | 'importar'>('usuarios');
+  const [adminSubTab, setAdminSubTab] = useState<'usuarios' | 'plantas' | 'caminhoes' | 'motoristas' | 'importar' | 'justificativas'>('usuarios');
   const [importType, setImportType] = useState<'CARGAS' | 'CAMINHOES' | 'MOTORISTAS'>('CARGAS');
 
   const currentUser = state.currentUser;

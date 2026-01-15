@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { AppState, Usuario, Planta, Caminhao, Motorista, Carga, LoadStatus } from './types';
+import { AppState, Usuario, Planta, Caminhao, Motorista, Carga, LoadStatus, Justificativa } from './types';
 import { GraphService, LISTS } from './utils/graphService';
 
 export const useAppState = () => {
@@ -12,6 +12,7 @@ export const useAppState = () => {
         usuarios: [],
         motoristas: [],
         cargas: [],
+        justificativas: [],
         currentUser: savedUser ? JSON.parse(savedUser) : null,
       };
   });
@@ -39,12 +40,13 @@ export const useAppState = () => {
       setIsAuthenticated(true);
       setGraph(service);
 
-      const [u, cr, p, c, m] = await Promise.all([
+      const [u, cr, p, c, m, j] = await Promise.all([
         service.getListItems(LISTS.USUARIOS.id),
         service.getListItems(LISTS.CARGAS.id),
         service.getListItems(LISTS.PLANTAS.id),
         service.getListItems(LISTS.CAMINHOES.id),
-        service.getListItems(LISTS.MOTORISTAS.id)
+        service.getListItems(LISTS.MOTORISTAS.id),
+        service.getListItems(LISTS.JUSTIFICATIVAS.id)
       ]);
 
       setState(prev => {
@@ -92,12 +94,17 @@ export const useAppState = () => {
                   ChegadaReal: item.ChegadaReal ? new Date(item.ChegadaReal) : undefined,
                   KmReal: item.KmReal ? Number(item.KmReal) : undefined,
                   KmPrevisto: item.KmPrevisto ? Number(item.KmPrevisto) : 0,
-                  // Mapeamento corrigido conforme imagem do usuário
                   Diff1_Justificativa: item.Diff1_Justificativa || item.Diff1_Jusitificativa,
                   Diff2_Atraso: item.Diff2_Atraso || item['Diff2_x002e_Atraso'] || item['Diff2.Atraso'],
                   Diff2_Justificativa: item.Diff2_Justificativa || item['Diff2_x002e_Justificativa'] || item['Diff2.Justificativa']
               };
           });
+
+          const normalizedJustificativas = j.map((item: any) => ({
+              id: normalizeId(item.id),
+              Texto: item.Texto || item.Title,
+              Tipo: item.Tipo || 'GAP'
+          }));
 
           const updatedCurrentUser = prev.currentUser 
             ? normalizedUsers.find((user: any) => normalizeId(user.LoginUsuario).toLowerCase() === normalizeId(prev.currentUser?.LoginUsuario).toLowerCase()) || prev.currentUser
@@ -110,7 +117,8 @@ export const useAppState = () => {
             usuarios: normalizedUsers,
             motoristas: normalizedMotoristas,
             currentUser: updatedCurrentUser,
-            cargas: normalizedCargas
+            cargas: normalizedCargas,
+            justificativas: normalizedJustificativas
           };
       });
     } catch (error: any) {
@@ -143,6 +151,13 @@ export const useAppState = () => {
     const fields = { Title: payload.NomeCompleto, NomeCompleto: payload.NomeCompleto, LoginUsuario: payload.LoginUsuario, SenhaUsuario: payload.SenhaUsuario, NivelAcesso: payload.NivelAcesso, PlantaId: normalizeId(payload.PlantaId) };
     const response = await graph.createItem(LISTS.USUARIOS.id, fields);
     setState(prev => ({ ...prev, usuarios: [...prev.usuarios, { ...payload, id: normalizeId(response.id), PlantaId: normalizeId(payload.PlantaId) }] }));
+  };
+
+  const addJustificativa = async (payload: any) => {
+    if (!graph) return;
+    const fields = { Title: payload.Texto, Texto: payload.Texto, Tipo: payload.Tipo };
+    const response = await graph.createItem(LISTS.JUSTIFICATIVAS.id, fields);
+    setState(prev => ({ ...prev, justificativas: [...prev.justificativas, { id: normalizeId(response.id), Texto: payload.Texto, Tipo: payload.Tipo }] }));
   };
 
   const addCarga = async (payload: any) => {
@@ -178,7 +193,6 @@ export const useAppState = () => {
             KmReal: updated.KmReal,
             ChegadaReal: updated.ChegadaReal?.toISOString(),
             Diff1_Gap: updated.Diff1_Gap,
-            // Nomes exatos conforme imagem do usuário (com underscore)
             Diff1_Justificativa: updated.Diff1_Justificativa,
             Diff2_Atraso: updated.Diff2_Atraso,
             Diff2_Justificativa: updated.Diff2_Justificativa,
@@ -234,11 +248,12 @@ export const useAppState = () => {
 
   const logout = () => { localStorage.removeItem('produtividade_user'); setIsAuthenticated(false); setGraph(null); window.location.reload(); };
 
-  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addPlanta, addUsuario, addCarga, addCaminhao, addMotorista, updateCarga, logout, setCurrentUser, 
+  return { state, loading, isAuthenticated, loginLocal, connectToSharePoint, addPlanta, addUsuario, addCarga, addCaminhao, addMotorista, addJustificativa, updateCarga, logout, setCurrentUser, 
     deletePlanta: (id: string) => deleteItem(LISTS.PLANTAS.id, id, 'plantas'),
     deleteCaminhao: (id: string) => deleteItem(LISTS.CAMINHOES.id, id, 'caminhoes'),
     deleteMotorista: (id: string) => deleteItem(LISTS.MOTORISTAS.id, id, 'motoristas'),
     deleteUsuario: (id: string) => deleteItem(LISTS.USUARIOS.id, id, 'usuarios'),
-    deleteCarga: (id: string) => deleteItem(LISTS.CARGAS.id, id, 'cargas')
+    deleteCarga: (id: string) => deleteItem(LISTS.CARGAS.id, id, 'cargas'),
+    deleteJustificativa: (id: string) => deleteItem(LISTS.JUSTIFICATIVAS.id, id, 'justificativas')
   };
 };

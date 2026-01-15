@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Caminhao, Motorista, LoadType, Carga, Planta } from '../types';
+import { Caminhao, Motorista, LoadType, Carga, Planta, Justificativa } from '../types';
 import { calculateExpectedReturn, findPreviousLoadArrival } from '../utils/logic';
 import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle, Clock, Info, Navigation, History, Trash2, Pencil } from 'lucide-react';
 import { format, differenceInMinutes, isAfter, startOfDay, endOfDay } from 'date-fns';
@@ -20,7 +20,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const [now, setNow] = useState(new Date());
 
   const currentUser = state.currentUser;
-  // Fix: Rename to userPlantId
   const userPlantId = currentUser?.PlantaId;
 
   const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantId || 'all');
@@ -33,7 +32,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     return () => clearInterval(timer);
   }, []);
 
-  // Fix: use userPlantId and PlantaId
   const availableCaminhoes = (state.caminhoes || []).filter((c: Caminhao) => !userPlantId || String(c.PlantaId) === String(userPlantId));
   const availableMotoristas = (state.motoristas || []).filter((m: Motorista) => !userPlantId || String(m.PlantaId) === String(userPlantId));
 
@@ -42,7 +40,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       const isStatusMatch = filter === 'ATIVAS' ? c.StatusCarga === 'PENDENTE' : c.StatusCarga === 'CONCLUIDO';
       if (!isStatusMatch) return false;
 
-      // Fix: use userPlantId and PlantaId
       const currentViewPlant = userPlantId || selectedPlanta;
       if (currentViewPlant !== 'all' && String(c.PlantaId) !== String(currentViewPlant)) return false;
       
@@ -99,7 +96,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     if (!caminhao) return;
     const voltaPrevista = calculateExpectedReturn(new Date(formData.dataInicio), formData.kmPrevisto, formData.tipo);
     actions.addCarga({
-      // Fix: use PlantaId
       PlantaId: caminhao.PlantaId,
       CaminhaoId: formData.caminhaoId,
       MotoristaId: formData.motoristaId,
@@ -132,6 +128,10 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   const inputClass = "w-full border border-blue-100 rounded-xl p-4 bg-gray-50 text-gray-800 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all text-base";
   const labelClass = "text-[10px] font-black text-blue-900 uppercase tracking-[0.15em] mb-1.5 ml-1 block opacity-50";
 
+  // Filtros de justificativas predefinidas
+  const justificationsGap = state.justificativas.filter((j: Justificativa) => j.Tipo === 'GAP');
+  const justificationsAtraso = state.justificativas.filter((j: Justificativa) => j.Tipo === 'ATRASO');
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-[2.5rem] border border-blue-50 shadow-sm space-y-4 animate-in fade-in duration-500">
@@ -141,13 +141,11 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
             <div className="relative">
               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} />
               <select 
-                  // Fix: use userPlantId
                   disabled={!!userPlantId}
                   value={selectedPlanta} 
                   onChange={e => setSelectedPlanta(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none text-sm transition-all disabled:opacity-50"
               >
-                  {/* Fix: use userPlantId and PlantaId */}
                   {!userPlantId && <option value="all">Todas as Plantas</option>}
                   {state.plantas.map((p: Planta) => <option key={p.PlantaId} value={p.PlantaId}>{p.NomedaUnidade}</option>)}
               </select>
@@ -205,7 +203,6 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                       <div className="flex-1 min-w-0">
                           <p className="text-xl font-black text-gray-900 italic leading-none truncate uppercase tracking-tighter">{state.caminhoes.find((c: any) => String(c.CaminhaoId) === String(carga.CaminhaoId))?.Placa || '---'}</p>
                           <div className="flex items-center gap-1 mt-1 text-blue-600 opacity-60">
-                              {/* Fix: find check updated to use PlantaId */}
                               <MapPin size={10} /><p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => String(p.PlantaId) === String(carga.PlantaId))?.NomedaUnidade}</p>
                           </div>
                       </div>
@@ -248,8 +245,34 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                         <div><label className={labelClass}>Horário Chegada</label><input required type="datetime-local" value={finishData.chegadaReal} onChange={e => setFinishData({...finishData, chegadaReal: e.target.value})} className={inputClass} /></div>
                     </div>
                     <div className="space-y-4">
-                        <div><label className={labelClass}>Justificativa Gap {finishData.diff1 > 60 && <span className="text-red-500">(Obrigatória)</span>}</label><textarea value={finishData.just1} onChange={e => setFinishData({...finishData, just1: e.target.value})} className={inputClass} rows={2} /></div>
-                        <div><label className={labelClass}>Justificativa Atraso {finishData.diff2 > 30 && <span className="text-orange-500">(Obrigatória)</span>}</label><textarea value={finishData.just2} onChange={e => setFinishData({...finishData, just2: e.target.value})} className={inputClass} rows={2} /></div>
+                        <div>
+                          <label className={labelClass}>Justificativa Gap {finishData.diff1 > 60 && <span className="text-red-500 font-black">(OBRIGATÓRIA)</span>}</label>
+                          <select 
+                            required={finishData.diff1 > 60} 
+                            value={finishData.just1} 
+                            onChange={e => setFinishData({...finishData, just1: e.target.value})} 
+                            className={inputClass}
+                          >
+                            <option value="">Selecione uma justificativa...</option>
+                            {justificationsGap.map((j: Justificativa) => (
+                              <option key={j.id} value={j.Texto}>{j.Texto}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className={labelClass}>Justificativa Atraso {finishData.diff2 > 30 && <span className="text-orange-500 font-black">(OBRIGATÓRIA)</span>}</label>
+                          <select 
+                            required={finishData.diff2 > 30} 
+                            value={finishData.just2} 
+                            onChange={e => setFinishData({...finishData, just2: e.target.value})} 
+                            className={inputClass}
+                          >
+                            <option value="">Selecione uma justificativa...</option>
+                            {justificationsAtraso.map((j: Justificativa) => (
+                              <option key={j.id} value={j.Texto}>{j.Texto}</option>
+                            ))}
+                          </select>
+                        </div>
                     </div>
                     <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl">Finalizar Agora</button>
                 </form>

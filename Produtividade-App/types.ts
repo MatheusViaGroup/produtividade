@@ -3,6 +3,12 @@ export type Role = 'Admin' | 'Operador';
 export type LoadType = 'CHEIA' | 'COMBINADA 2';
 export type LoadStatus = 'PENDENTE' | 'CONCLUIDO';
 
+export interface Justificativa {
+  id: string;
+  Texto: string;
+  Tipo: 'GAP' | 'ATRASO';
+}
+
 export interface Planta {
   'NomedaUnidade': string;
   'PlantaId': string;
@@ -59,5 +65,6 @@ export interface AppState {
   usuarios: Usuario[];
   motoristas: Motorista[];
   cargas: Carga[];
+  justificativas: Justificativa[];
   currentUser: Usuario | null;
 }
