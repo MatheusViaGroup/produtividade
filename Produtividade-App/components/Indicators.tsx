@@ -45,30 +45,26 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
   const metrics = useMemo(() => {
     if (filteredCargas.length === 0) return { avgRouteTime: 0, avgKm: 0, avgUnloadTime: 0, totalKm: 0, kmPerDay: 0 };
 
-    // Variáveis acumuladoras locais
+    // Acumuladores locais
     let accTotalKm = 0;
     let accTotalUnloadMinutes = 0;
-    let accTotalRouteMinutes = 0; // "Nova Jornada" (Líquida)
+    let accTotalRouteMinutes = 0; // Volta a ser o Tempo Bruto Total
 
     filteredCargas.forEach(c => {
       // Acumula KM
       accTotalKm += (c.KmReal || 0);
 
-      if (c.ChegadaReal && c.KmReal) {
-        // 1. Tempo Bruto (Relógio)
+      if (c.ChegadaReal) {
+        // 1. Tempo Bruto (Diferença direta entre saída e chegada)
         const grossMinutes = differenceInMinutes(new Date(c.ChegadaReal), new Date(c.DataInicio));
-        
-        // 2. Tempo de Estrada Estimado (38km/h)
-        const estimatedTravelMinutes = (c.KmReal / 38) * 60;
-        
-        // 3. Tempo de Descarga (Bruto - Estrada)
-        const unloadMinutes = Math.max(0, grossMinutes - estimatedTravelMinutes);
-        
-        // Acumula Descarga
-        accTotalUnloadMinutes += unloadMinutes;
+        accTotalRouteMinutes += grossMinutes;
 
-        // 4. Nova Jornada = Bruto - Descarga
-        accTotalRouteMinutes += Math.max(0, grossMinutes - unloadMinutes);
+        if (c.KmReal) {
+          // 2. Tempo de Descarga Estimado (Lógica mantida: Bruto - Estrada Estimada 38km/h)
+          const estimatedTravelMinutes = (c.KmReal / 38) * 60;
+          const unloadMinutes = Math.max(0, grossMinutes - estimatedTravelMinutes);
+          accTotalUnloadMinutes += unloadMinutes;
+        }
       }
     });
 
