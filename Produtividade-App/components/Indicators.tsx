@@ -37,6 +37,10 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
   const metrics = useMemo(() => {
     if (filteredCargas.length === 0) return { avgRouteTime: 0, avgKm: 0, avgUnloadTime: 0, totalKm: 0, kmPerDay: 0 };
+    
+    // Cálculo de motoristas únicos no período filtrado
+    const uniqueDriversCount = new Set(filteredCargas.map(c => c.MotoristaId)).size || 1;
+    
     const totalMinutes = filteredCargas.reduce((acc, c) => c.ChegadaReal ? acc + differenceInMinutes(new Date(c.ChegadaReal), new Date(c.DataInicio)) : acc, 0);
     const totalKm = filteredCargas.reduce((acc, c) => acc + (c.KmReal || 0), 0);
     const totalUnloadMinutes = filteredCargas.reduce((acc, c) => {
@@ -46,10 +50,12 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
         return acc + Math.max(0, actualMinutes - estimatedTravelMinutes);
     }, 0);
     const uniqueDays = new Set(filteredCargas.map(c => format(new Date(c.DataInicio), 'yyyy-MM-dd'))).size;
+    
     return {
-      avgRouteTime: Math.round(totalMinutes / filteredCargas.length),
-      avgKm: Math.round(totalKm / filteredCargas.length),
-      avgUnloadTime: Math.round(totalUnloadMinutes / filteredCargas.length),
+      // Médias agora calculadas por Motorista Único
+      avgRouteTime: Math.round(totalMinutes / uniqueDriversCount),
+      avgKm: Math.round(totalKm / uniqueDriversCount),
+      avgUnloadTime: Math.round(totalUnloadMinutes / uniqueDriversCount),
       totalKm: totalKm,
       kmPerDay: uniqueDays > 0 ? Math.round(totalKm / uniqueDays) : 0
     };
@@ -117,9 +123,9 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card title="Tempo em Rota" value={metrics.avgRouteTime} unit="min" icon={Clock} color="bg-blue-50 text-blue-600" />
-        <Card title="Km Médio" value={metrics.avgKm} unit="km" icon={Gauge} color="bg-indigo-50 text-indigo-600" />
-        <Card title="Tempo Descarga" value={metrics.avgUnloadTime} unit="min" icon={TrendingUp} color="bg-cyan-50 text-cyan-600" />
+        <Card title="Tempo Médio por Motorista" value={metrics.avgRouteTime} unit="min" icon={Clock} color="bg-blue-50 text-blue-600" />
+        <Card title="Km Médio por Motorista" value={metrics.avgKm} unit="km" icon={Gauge} color="bg-indigo-50 text-indigo-600" />
+        <Card title="Descarga Média por Motorista" value={metrics.avgUnloadTime} unit="min" icon={TrendingUp} color="bg-cyan-50 text-cyan-600" />
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -129,56 +135,62 @@ export const Indicators: React.FC<IndicatorsProps> = ({ state }) => {
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Gráfico 1: Performance por Motorista */}
-        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-blue-50 shadow-sm">
+        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-blue-50 shadow-sm overflow-hidden">
           <div className="mb-10">
             <h3 className="text-lg font-black text-blue-950 uppercase italic tracking-tighter leading-none flex items-center gap-2">
               <CheckCircle2 size={20} className="text-blue-600" /> Justificativas por Motorista
             </h3>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Cargas Finalizadas: Com vs Sem Justificativa</p>
           </div>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={driverPerformanceData} margin={{ left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" tick={{fontSize: 9, fontWeight: 900, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                <YAxis tick={{fontSize: 10, fontWeight: 700, fill: '#cbd5e1'}} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', padding: '15px'}} 
-                  cursor={{fill: '#f8fafc'}}
-                />
-                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
-                <Bar name="Com Justificativa" dataKey="comJustificativa" fill="#ef4444" radius={[6, 6, 0, 0]} barSize={20} />
-                <Bar name="Sem Justificativa" dataKey="semJustificativa" fill="#10b981" radius={[6, 6, 0, 0]} barSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Div com scroll horizontal e largura mínima baseada na quantidade de motoristas */}
+          <div className="h-[400px] w-full overflow-x-auto no-scrollbar">
+            <div style={{ minWidth: `${Math.max(driverPerformanceData.length * 100, 600)}px`, height: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={driverPerformanceData} margin={{ left: -20, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="name" tick={{fontSize: 9, fontWeight: 900, fill: '#64748b'}} axisLine={false} tickLine={false} interval={0} angle={-15} textAnchor="end" />
+                  <YAxis tick={{fontSize: 10, fontWeight: 700, fill: '#cbd5e1'}} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', padding: '15px'}} 
+                    cursor={{fill: '#f8fafc'}}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase' }} />
+                  <Bar name="Com Justificativa" dataKey="comJustificativa" fill="#ef4444" radius={[6, 6, 0, 0]} barSize={20} />
+                  <Bar name="Sem Justificativa" dataKey="semJustificativa" fill="#10b981" radius={[6, 6, 0, 0]} barSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
 
         {/* Gráfico 2: Motivos de Atraso */}
-        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-blue-50 shadow-sm">
+        <div className="bg-white p-6 sm:p-10 rounded-[2.5rem] border border-blue-50 shadow-sm overflow-hidden">
           <div className="mb-10">
             <h3 className="text-lg font-black text-blue-950 uppercase italic tracking-tighter leading-none flex items-center gap-2">
               <AlertCircle size={20} className="text-orange-500" /> Motivos de Atraso (Frequência)
             </h3>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">Ranking das justificativas mais utilizadas</p>
           </div>
-          <div className="h-[400px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={reasonsData} layout="vertical" margin={{ left: 40, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                <XAxis type="number" tick={{fontSize: 10, fontWeight: 700, fill: '#cbd5e1'}} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="reason" width={100} tick={{fontSize: 9, fontWeight: 900, fill: '#64748b'}} axisLine={false} tickLine={false} />
-                <Tooltip 
-                  contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', padding: '15px'}} 
-                  cursor={{fill: '#f8fafc'}}
-                />
-                <Bar name="Ocorrências" dataKey="count" fill="#f59e0b" radius={[0, 10, 10, 0]} barSize={25}>
-                  {reasonsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f59e0b'} opacity={1 - (index * 0.1)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Div com scroll vertical e altura fixa */}
+          <div className="h-[400px] w-full overflow-y-auto no-scrollbar pr-2">
+            <div style={{ height: `${Math.max(reasonsData.length * 40, 400)}px`, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reasonsData} layout="vertical" margin={{ left: 40, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" tick={{fontSize: 10, fontWeight: 700, fill: '#cbd5e1'}} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="reason" width={100} tick={{fontSize: 9, fontWeight: 900, fill: '#64748b'}} axisLine={false} tickLine={false} />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', padding: '15px'}} 
+                    cursor={{fill: '#f8fafc'}}
+                  />
+                  <Bar name="Ocorrências" dataKey="count" fill="#f59e0b" radius={[0, 10, 10, 0]} barSize={25}>
+                    {reasonsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? '#ea580c' : '#f59e0b'} opacity={1 - (index * 0.05)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>
