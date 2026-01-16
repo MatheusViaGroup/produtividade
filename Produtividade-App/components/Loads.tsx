@@ -215,10 +215,14 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
                {/* Seção de Tempos e Horários */}
                {isHistory && carga.ChegadaReal ? (() => {
-                  const totalMin = differenceInMinutes(new Date(carga.ChegadaReal), new Date(carga.DataInicio));
+                  const startDate = new Date(carga.DataInicio);
+                  const endDate = new Date(carga.ChegadaReal);
+                  const totalMin = differenceInMinutes(endDate, startDate);
+                  
                   const km = Number(carga.KmReal || 0);
-                  const roadMin = km > 0 ? Math.round((km / 38) * 60) : 0;
-                  const unloadMin = Math.max(0, totalMin - roadMin);
+                  const hasValidKm = km > 0;
+                  const estimatedRoadMin = hasValidKm ? Math.round((km / 38) * 60) : 0;
+                  const unloadMin = Math.max(0, totalMin - estimatedRoadMin);
 
                   const formatTime = (min: number) => {
                     const h = Math.floor(min / 60);
@@ -234,7 +238,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                                     <Calendar className="w-2.5 h-2.5 mr-1" /> Saída
                                 </span>
                                 <p className="text-sm font-black text-gray-700 italic">
-                                    {format(new Date(carga.DataInicio), 'dd/MM HH:mm')}
+                                    {format(startDate, 'dd/MM HH:mm')}
                                 </p>
                             </div>
                             <div>
@@ -242,25 +246,25 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                                     <CheckCircle2 className="w-2.5 h-2.5 mr-1" /> Chegada
                                 </span>
                                 <p className="text-sm font-black text-gray-700 italic">
-                                    {format(new Date(carga.ChegadaReal), 'dd/MM HH:mm')}
+                                    {format(endDate, 'dd/MM HH:mm')}
                                 </p>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <span className="flex items-center text-[8px] font-black text-blue-500/60 uppercase tracking-widest mb-1">
-                                    <Truck className="w-2.5 h-2.5 mr-1" /> Rodando
+                                    <Truck className="w-2.5 h-2.5 mr-1" /> Jornada
                                 </span>
                                 <p className="text-sm font-black text-blue-900 italic">
-                                    {formatTime(roadMin)}
+                                    {formatTime(totalMin)}
                                 </p>
                             </div>
                             <div>
                                 <span className="flex items-center text-[8px] font-black text-orange-500/60 uppercase tracking-widest mb-1">
-                                    <Clock className="w-2.5 h-2.5 mr-1" /> Descarga
+                                    <Clock className="w-2.5 h-2.5 mr-1" /> Descarga (Est.)
                                 </span>
                                 <p className="text-sm font-black text-orange-900 italic">
-                                    {formatTime(unloadMin)}
+                                    {hasValidKm ? formatTime(unloadMin) : '---'}
                                 </p>
                             </div>
                         </div>
