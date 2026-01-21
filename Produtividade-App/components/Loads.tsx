@@ -213,13 +213,14 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                       <div className="bg-slate-100 p-3 rounded-2xl text-slate-600"><Truck size={24} /></div>
                       <div className="flex-1 min-w-0">
                           <p className="text-xl font-black text-gray-900 italic leading-none truncate uppercase tracking-tighter">{state.caminhoes.find((c: any) => String(c.CaminhaoId) === String(carga.CaminhaoId))?.Placa || '---'}</p>
-                          <div className="flex items-center gap-3 mt-1">
+                          <div className="flex items-center gap-2 mt-1">
                             <div className="flex items-center gap-1 text-blue-600 opacity-60">
                                 <MapPin size={10} /><p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => String(p.PlantaId) === String(carga.PlantaId))?.NomedaUnidade}</p>
                             </div>
                             {carga.Roteiro && (
-                                <div className="flex items-center gap-1 text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
-                                    <Hash size={10} /><p className="text-[9px] font-black uppercase truncate">{carga.Roteiro}</p>
+                                <div title={`Roteiro: ${carga.Roteiro}`} className="flex items-center gap-1.5 text-slate-700 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200 shadow-sm min-w-0 shrink-0">
+                                    <Hash size={11} className="text-slate-400" strokeWidth={3} />
+                                    <p className="text-[10px] font-black uppercase truncate tracking-tight">{carga.Roteiro}</p>
                                 </div>
                             )}
                           </div>
