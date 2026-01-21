@@ -49,6 +49,7 @@ export interface Carga {
   'KmPrevisto': number;
   'VoltaPrevista': Date;
   'StatusCarga': LoadStatus;
+  'Roteiro'?: string;
   
   // Finalização
   'KmReal'?: number;

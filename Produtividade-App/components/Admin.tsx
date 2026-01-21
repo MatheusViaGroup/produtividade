@@ -120,6 +120,7 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                         const placaStr = String(row['Placa'] || '').trim().toUpperCase();
                         const motoristaStr = String(row['Motoristas coleta'] || '').trim();
                         const eventoStr = String(row['Eventos'] || '').trim().toUpperCase();
+                        const roteiroStr = String(row['Roteiro'] || '').trim();
                         const kmPrevisto = Number(row['KM previsto'] || 0);
                         const dataInicio = parseExcelDate(row['Início']);
                         const caminhao = state.caminhoes.find((c: Caminhao) => c['Placa'].trim().toUpperCase() === placaStr);
@@ -136,6 +137,7 @@ const ImportTab = ({ state, actions, initialType }: any) => {
                             'DataInicio': dataInicio,
                             'KmPrevisto': kmPrevisto,
                             'VoltaPrevista': voltaPrevista,
+                            'Roteiro': roteiroStr
                         });
                         setResults(prev => [{msg: `Linha ${i+1}: Sucesso (${placaStr})`, type: 'success'}, ...prev]);
                     } else if (importType === 'CAMINHOES') {

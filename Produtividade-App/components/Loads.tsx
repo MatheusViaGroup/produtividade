@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Caminhao, Motorista, LoadType, Carga, Planta, Justificativa } from '../types';
 import { calculateExpectedReturn, findPreviousLoadArrival } from '../utils/logic';
-import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle, Clock, Info, Navigation, History, Trash2, Pencil } from 'lucide-react';
+import { Plus, Truck, User, ArrowRight, X, Calendar, MapPin, Gauge, FileSpreadsheet, AlertCircle, CheckCircle2, AlertTriangle, Clock, Info, Navigation, History, Trash2, Pencil, Hash } from 'lucide-react';
 import { format, differenceInMinutes, isAfter, startOfDay, endOfDay } from 'date-fns';
 
 interface LoadsProps {
@@ -57,8 +57,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     });
   }, [state.cargas, filter, userPlantId, selectedPlanta, selectedMotorista, dateStart, dateEnd]);
 
-  const [formData, setFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0 });
-  const [editFormData, setEditFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), voltaPrevista: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0 });
+  const [formData, setFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0, roteiro: '' });
+  const [editFormData, setEditFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), voltaPrevista: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0, roteiro: '' });
   const [finishData, setFinishData] = useState({ chegadaReal: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmReal: 0, just1: '', just2: '', diff1: 0, diff2: 0 });
 
   useEffect(() => {
@@ -72,6 +72,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
           dataInicio: format(new Date(carga.DataInicio), "yyyy-MM-dd'T'HH:mm"),
           voltaPrevista: format(new Date(carga.VoltaPrevista), "yyyy-MM-dd'T'HH:mm"),
           kmPrevisto: carga.KmPrevisto,
+          roteiro: carga.Roteiro || ''
         });
       }
     }
@@ -103,6 +104,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       DataInicio: new Date(formData.dataInicio),
       KmPrevisto: formData.kmPrevisto,
       VoltaPrevista: voltaPrevista,
+      Roteiro: formData.roteiro
     });
     setIsModalOpen(false);
   };
@@ -111,7 +113,16 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     e.preventDefault();
     const carga = state.cargas.find((c: Carga) => c.CargaId === isEditing);
     if (!carga) return;
-    actions.updateCarga({ ...carga, CaminhaoId: editFormData.caminhaoId, MotoristaId: editFormData.motoristaId, TipoCarga: editFormData.tipo, DataInicio: new Date(editFormData.dataInicio), VoltaPrevista: new Date(editFormData.voltaPrevista), KmPrevisto: editFormData.kmPrevisto });
+    actions.updateCarga({ 
+        ...carga, 
+        CaminhaoId: editFormData.caminhaoId, 
+        MotoristaId: editFormData.motoristaId, 
+        TipoCarga: editFormData.tipo, 
+        DataInicio: new Date(editFormData.dataInicio), 
+        VoltaPrevista: new Date(editFormData.voltaPrevista), 
+        KmPrevisto: editFormData.kmPrevisto,
+        Roteiro: editFormData.roteiro
+    });
     setIsEditing(null);
   };
 
@@ -202,8 +213,15 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                       <div className="bg-slate-100 p-3 rounded-2xl text-slate-600"><Truck size={24} /></div>
                       <div className="flex-1 min-w-0">
                           <p className="text-xl font-black text-gray-900 italic leading-none truncate uppercase tracking-tighter">{state.caminhoes.find((c: any) => String(c.CaminhaoId) === String(carga.CaminhaoId))?.Placa || '---'}</p>
-                          <div className="flex items-center gap-1 mt-1 text-blue-600 opacity-60">
-                              <MapPin size={10} /><p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => String(p.PlantaId) === String(carga.PlantaId))?.NomedaUnidade}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <div className="flex items-center gap-1 text-blue-600 opacity-60">
+                                <MapPin size={10} /><p className="text-[9px] font-black uppercase truncate">{state.plantas.find((p: any) => String(p.PlantaId) === String(carga.PlantaId))?.NomedaUnidade}</p>
+                            </div>
+                            {carga.Roteiro && (
+                                <div className="flex items-center gap-1 text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md">
+                                    <Hash size={10} /><p className="text-[9px] font-black uppercase truncate">{carga.Roteiro}</p>
+                                </div>
+                            )}
                           </div>
                       </div>
                   </div>
@@ -344,6 +362,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                         <div><label className={labelClass}>Caminhão</label><select required value={editFormData.caminhaoId} onChange={e => setEditFormData({...editFormData, caminhaoId: e.target.value})} className={inputClass}>{availableCaminhoes.map((c: Caminhao) => <option key={c.id} value={c.CaminhaoId}>{c.Placa}</option>)}</select></div>
                         <div><label className={labelClass}>Motorista</label><select required value={editFormData.motoristaId} onChange={e => setEditFormData({...editFormData, motoristaId: e.target.value})} className={inputClass}>{availableMotoristas.map((m: Motorista) => <option key={m.id} value={m.MotoristaId}>{m.NomedoMotorista}</option>)}</select></div>
                     </div>
+                    <div><label className={labelClass}>Roteiro</label><input type="text" value={editFormData.roteiro} onChange={e => setEditFormData({...editFormData, roteiro: e.target.value})} className={inputClass} placeholder="Opcional" /></div>
                     <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl">Salvar Alterações</button>
                 </form>
             ) : (
@@ -357,6 +376,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                         <div><label className={labelClass}>Tipo</label><select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value as LoadType})} className={inputClass}><option value="CHEIA">CHEIA</option><option value="COMBINADA 2">COMB. 2</option></select></div>
                         <div><label className={labelClass}>Km Previsto</label><input required type="number" value={formData.kmPrevisto} onChange={e => setFormData({...formData, kmPrevisto: Number(e.target.value)})} className={inputClass} /></div>
                     </div>
+                    <div><label className={labelClass}>Roteiro</label><input type="text" value={formData.roteiro} onChange={e => setFormData({...formData, roteiro: e.target.value})} className={inputClass} placeholder="Opcional" /></div>
                     <div><label className={labelClass}>Início da Rota</label><input required type="datetime-local" value={formData.dataInicio} onChange={e => setFormData({...formData, dataInicio: e.target.value})} className={inputClass} /></div>
                     <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl">Salvar Carga</button>
                 </form>

@@ -88,6 +88,7 @@ export const useAppState = () => {
                   CaminhaoId: normalizeId(item.CaminhaoId || item.CaminhaoID),
                   MotoristaId: normalizeId(item.MotoristaId || item.MotoristaID),
                   StatusCarga: status,
+                  Roteiro: item.Roteiro || '',
                   DataCriacao: item.DataCriacao ? new Date(item.DataCriacao) : new Date(),
                   DataInicio: item.DataInicio ? new Date(item.DataInicio) : new Date(),
                   VoltaPrevista: item.VoltaPrevista ? new Date(item.VoltaPrevista) : new Date(),
@@ -166,7 +167,8 @@ export const useAppState = () => {
   const addCarga = async (payload: any) => {
     if (!graph) return;
     const fields = {
-      Title: 'Carga',
+      Title: payload.Roteiro || 'Carga',
+      Roteiro: payload.Roteiro,
       PlantaId: normalizeId(payload.PlantaId),
       CaminhaoId: normalizeId(payload.CaminhaoId),
       MotoristaId: normalizeId(payload.MotoristaId),
@@ -178,7 +180,18 @@ export const useAppState = () => {
       VoltaPrevista: payload.VoltaPrevista.toISOString()
     };
     const response = await graph.createItem(LISTS.CARGAS.id, fields);
-    const newItem = { ...fields, CargaId: normalizeId(response.id), DataCriacao: new Date(), StatusCarga: 'PENDENTE' as const, DataInicio: new Date(payload.DataInicio), VoltaPrevista: new Date(payload.VoltaPrevista), PlantaId: normalizeId(payload.PlantaId), CaminhaoId: normalizeId(payload.CaminhaoId), MotoristaId: normalizeId(payload.MotoristaId) };
+    const newItem = { 
+        ...fields, 
+        CargaId: normalizeId(response.id), 
+        DataCriacao: new Date(), 
+        StatusCarga: 'PENDENTE' as const, 
+        DataInicio: new Date(payload.DataInicio), 
+        VoltaPrevista: new Date(payload.VoltaPrevista), 
+        PlantaId: normalizeId(payload.PlantaId), 
+        CaminhaoId: normalizeId(payload.CaminhaoId), 
+        MotoristaId: normalizeId(payload.MotoristaId),
+        Roteiro: payload.Roteiro
+    };
     setState(prev => ({ ...prev, cargas: [newItem, ...prev.cargas] }));
   };
 
@@ -193,6 +206,7 @@ export const useAppState = () => {
             DataInicio: updated.DataInicio.toISOString(),
             VoltaPrevista: updated.VoltaPrevista.toISOString(),
             StatusCarga: updated.StatusCarga,
+            Roteiro: updated.Roteiro,
             KmReal: updated.KmReal,
             ChegadaReal: updated.ChegadaReal?.toISOString(),
             Diff1_Gap: updated.Diff1_Gap,
