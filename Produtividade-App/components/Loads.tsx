@@ -354,58 +354,50 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                     <div className="space-y-4">
                         <div className="bg-gray-50/50 p-4 rounded-3xl border border-blue-50">
                           <label className={labelClass}>Justificativa Gap {finishData.diff1 > 60 && <span className="text-red-500 font-black">(OBRIGATÓRIA)</span>}</label>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {justificationsGap.map((j: Justificativa) => {
-                              const isSelected = finishData.just1.includes(j.Texto);
-                              return (
-                                <button
-                                  key={j.id}
-                                  type="button"
-                                  onClick={() => {
-                                    const newJust = isSelected 
-                                      ? finishData.just1.filter(t => t !== j.Texto)
-                                      : [...finishData.just1, j.Texto];
-                                    setFinishData({...finishData, just1: newJust});
-                                  }}
-                                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${
-                                    isSelected 
-                                      ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-95' 
-                                      : 'bg-white text-blue-800 border-blue-100 hover:border-blue-300'
-                                  }`}
-                                >
-                                  {j.Texto}
-                                </button>
-                              );
-                            })}
-                            {justificationsGap.length === 0 && <p className="text-[9px] font-bold text-gray-300 uppercase italic">Nenhuma justificativa de Gap cadastrada.</p>}
+                          <select 
+                            className={inputClass}
+                            value=""
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val && !finishData.just1.includes(val)) {
+                                    setFinishData({...finishData, just1: [...finishData.just1, val]});
+                                }
+                            }}
+                          >
+                            <option value="">Selecione uma justificativa...</option>
+                            {justificationsGap.map(j => <option key={j.id} value={j.Texto}>{j.Texto}</option>)}
+                          </select>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {finishData.just1.map((text, idx) => (
+                               <div key={idx} className="bg-blue-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-sm animate-in zoom-in duration-200">
+                                 {text}
+                                 <button type="button" onClick={() => setFinishData({...finishData, just1: finishData.just1.filter(t => t !== text)})} className="hover:bg-blue-700 rounded-full p-0.5"><X size={12} /></button>
+                               </div>
+                            ))}
                           </div>
                         </div>
                         <div className="bg-gray-50/50 p-4 rounded-3xl border border-blue-50">
                           <label className={labelClass}>Justificativa Atraso {finishData.diff2 > 30 && <span className="text-orange-500 font-black">(OBRIGATÓRIA)</span>}</label>
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {justificationsAtraso.map((j: Justificativa) => {
-                              const isSelected = finishData.just2.includes(j.Texto);
-                              return (
-                                <button
-                                  key={j.id}
-                                  type="button"
-                                  onClick={() => {
-                                    const newJust = isSelected 
-                                      ? finishData.just2.filter(t => t !== j.Texto)
-                                      : [...finishData.just2, j.Texto];
-                                    setFinishData({...finishData, just2: newJust});
-                                  }}
-                                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${
-                                    isSelected 
-                                      ? 'bg-orange-600 text-white border-orange-600 shadow-md scale-95' 
-                                      : 'bg-white text-blue-800 border-blue-100 hover:border-blue-300'
-                                  }`}
-                                >
-                                  {j.Texto}
-                                </button>
-                              );
-                            })}
-                            {justificationsAtraso.length === 0 && <p className="text-[9px] font-bold text-gray-300 uppercase italic">Nenhuma justificativa de Atraso cadastrada.</p>}
+                          <select 
+                            className={inputClass}
+                            value=""
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                if (val && !finishData.just2.includes(val)) {
+                                    setFinishData({...finishData, just2: [...finishData.just2, val]});
+                                }
+                            }}
+                          >
+                            <option value="">Selecione uma justificativa...</option>
+                            {justificationsAtraso.map(j => <option key={j.id} value={j.Texto}>{j.Texto}</option>)}
+                          </select>
+                          <div className="flex flex-wrap gap-2 mt-3">
+                            {finishData.just2.map((text, idx) => (
+                               <div key={idx} className="bg-orange-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-sm animate-in zoom-in duration-200">
+                                 {text}
+                                 <button type="button" onClick={() => setFinishData({...finishData, just2: finishData.just2.filter(t => t !== text)})} className="hover:bg-orange-700 rounded-full p-0.5"><X size={12} /></button>
+                               </div>
+                            ))}
                           </div>
                         </div>
                     </div>
