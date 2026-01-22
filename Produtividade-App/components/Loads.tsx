@@ -24,6 +24,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
 
   const [selectedPlanta, setSelectedPlanta] = useState<string>(userPlantId || 'all');
   const [selectedMotorista, setSelectedMotorista] = useState<string>('all');
+  const [selectedPlaca, setSelectedPlaca] = useState<string>('all');
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
 
@@ -44,6 +45,8 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       if (currentViewPlant !== 'all' && String(c.PlantaId) !== String(currentViewPlant)) return false;
       
       if (selectedMotorista !== 'all' && String(c.MotoristaId) !== String(selectedMotorista)) return false;
+      
+      if (selectedPlaca !== 'all' && String(c.CaminhaoId) !== String(selectedPlaca)) return false;
 
       if (dateStart || dateEnd) {
         const loadDate = new Date(c.DataInicio);
@@ -55,11 +58,11 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
       if (filter === 'ATIVAS') return new Date(b.DataCriacao).getTime() - new Date(a.DataCriacao).getTime();
       return (new Date(b.ChegadaReal || 0).getTime()) - (new Date(a.ChegadaReal || 0).getTime());
     });
-  }, [state.cargas, filter, userPlantId, selectedPlanta, selectedMotorista, dateStart, dateEnd]);
+  }, [state.cargas, filter, userPlantId, selectedPlanta, selectedMotorista, selectedPlaca, dateStart, dateEnd]);
 
   const [formData, setFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0, roteiro: '' });
   const [editFormData, setEditFormData] = useState({ caminhaoId: '', motoristaId: '', tipo: 'CHEIA' as LoadType, dataInicio: format(new Date(), "yyyy-MM-dd'T'HH:mm"), voltaPrevista: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmPrevisto: 0, roteiro: '' });
-  const [finishData, setFinishData] = useState({ chegadaReal: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmReal: 0, just1: '', just2: '', diff1: 0, diff2: 0 });
+  const [finishData, setFinishData] = useState({ chegadaReal: format(new Date(), "yyyy-MM-dd'T'HH:mm"), kmReal: 0, just1: [] as string[], just2: [] as string[], diff1: 0, diff2: 0 });
 
   useEffect(() => {
     if (isEditing) {
@@ -130,9 +133,19 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
     e.preventDefault();
     const carga = state.cargas.find((c: any) => c.CargaId === isFinishing);
     if (!carga) return;
-    if (finishData.diff1 > 60 && !finishData.just1.trim()) return alert("Justificativa de Gap obrigatória.");
-    if (finishData.diff2 > 30 && !finishData.just2.trim()) return alert("Justificativa de Atraso obrigatória.");
-    actions.updateCarga({ ...carga, StatusCarga: 'CONCLUIDO', KmReal: finishData.kmReal, ChegadaReal: new Date(finishData.chegadaReal), Diff1_Gap: finishData.diff1, Diff1_Justificativa: finishData.just1, Diff2_Atraso: finishData.diff2, Diff2_Justificativa: finishData.just2 });
+    if (finishData.diff1 > 60 && finishData.just1.length === 0) return alert("Justificativa de Gap obrigatória.");
+    if (finishData.diff2 > 30 && finishData.just2.length === 0) return alert("Justificativa de Atraso obrigatória.");
+    
+    actions.updateCarga({ 
+      ...carga, 
+      StatusCarga: 'CONCLUIDO', 
+      KmReal: finishData.kmReal, 
+      ChegadaReal: new Date(finishData.chegadaReal), 
+      Diff1_Gap: finishData.diff1, 
+      Diff1_Justificativa: finishData.just1.join(', '), 
+      Diff2_Atraso: finishData.diff2, 
+      Diff2_Justificativa: finishData.just2.join(', ') 
+    });
     setIsFinishing(null);
   };
 
@@ -146,7 +159,7 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-[2.5rem] border border-blue-50 shadow-sm space-y-4 animate-in fade-in duration-500">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Unidade / Planta</label>
             <div className="relative">
@@ -167,6 +180,20 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} />
               <select value={selectedMotorista} onChange={e => setSelectedMotorista(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none text-sm transition-all"><option value="all">Todos os Motoristas</option>{availableMotoristas.map((m: Motorista) => <option key={m.MotoristaId} value={m.MotoristaId}>{m.NomedoMotorista}</option>)}</select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Placa</label>
+            <div className="relative">
+              <Truck className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} />
+              <select 
+                  value={selectedPlaca} 
+                  onChange={e => setSelectedPlaca(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 appearance-none text-sm transition-all"
+              >
+                  <option value="all">Todas as Placas</option>
+                  {availableCaminhoes.map((c: Caminhao) => <option key={c.CaminhaoId} value={c.CaminhaoId}>{c.Placa}</option>)}
+              </select>
             </div>
           </div>
           <div className="space-y-1.5"><label className="text-[10px] font-black text-blue-800/40 uppercase tracking-widest ml-1">Início</label><div className="relative"><Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-300" size={16} /><input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} className="w-full pl-11 pr-4 py-3 bg-blue-50/30 border border-blue-50 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700 text-sm" /></div></div>
@@ -325,33 +352,61 @@ export const Loads: React.FC<LoadsProps> = ({ state, actions, isAdmin, onImport 
                         <div><label className={labelClass}>Horário Chegada</label><input required type="datetime-local" value={finishData.chegadaReal} onChange={e => setFinishData({...finishData, chegadaReal: e.target.value})} className={inputClass} /></div>
                     </div>
                     <div className="space-y-4">
-                        <div>
+                        <div className="bg-gray-50/50 p-4 rounded-3xl border border-blue-50">
                           <label className={labelClass}>Justificativa Gap {finishData.diff1 > 60 && <span className="text-red-500 font-black">(OBRIGATÓRIA)</span>}</label>
-                          <select 
-                            required={finishData.diff1 > 60} 
-                            value={finishData.just1} 
-                            onChange={e => setFinishData({...finishData, just1: e.target.value})} 
-                            className={inputClass}
-                          >
-                            <option value="">Selecione uma justificativa...</option>
-                            {justificationsGap.map((j: Justificativa) => (
-                              <option key={j.id} value={j.Texto}>{j.Texto}</option>
-                            ))}
-                          </select>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {justificationsGap.map((j: Justificativa) => {
+                              const isSelected = finishData.just1.includes(j.Texto);
+                              return (
+                                <button
+                                  key={j.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const newJust = isSelected 
+                                      ? finishData.just1.filter(t => t !== j.Texto)
+                                      : [...finishData.just1, j.Texto];
+                                    setFinishData({...finishData, just1: newJust});
+                                  }}
+                                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                                    isSelected 
+                                      ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-95' 
+                                      : 'bg-white text-blue-800 border-blue-100 hover:border-blue-300'
+                                  }`}
+                                >
+                                  {j.Texto}
+                                </button>
+                              );
+                            })}
+                            {justificationsGap.length === 0 && <p className="text-[9px] font-bold text-gray-300 uppercase italic">Nenhuma justificativa de Gap cadastrada.</p>}
+                          </div>
                         </div>
-                        <div>
+                        <div className="bg-gray-50/50 p-4 rounded-3xl border border-blue-50">
                           <label className={labelClass}>Justificativa Atraso {finishData.diff2 > 30 && <span className="text-orange-500 font-black">(OBRIGATÓRIA)</span>}</label>
-                          <select 
-                            required={finishData.diff2 > 30} 
-                            value={finishData.just2} 
-                            onChange={e => setFinishData({...finishData, just2: e.target.value})} 
-                            className={inputClass}
-                          >
-                            <option value="">Selecione uma justificativa...</option>
-                            {justificationsAtraso.map((j: Justificativa) => (
-                              <option key={j.id} value={j.Texto}>{j.Texto}</option>
-                            ))}
-                          </select>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {justificationsAtraso.map((j: Justificativa) => {
+                              const isSelected = finishData.just2.includes(j.Texto);
+                              return (
+                                <button
+                                  key={j.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const newJust = isSelected 
+                                      ? finishData.just2.filter(t => t !== j.Texto)
+                                      : [...finishData.just2, j.Texto];
+                                    setFinishData({...finishData, just2: newJust});
+                                  }}
+                                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                                    isSelected 
+                                      ? 'bg-orange-600 text-white border-orange-600 shadow-md scale-95' 
+                                      : 'bg-white text-blue-800 border-blue-100 hover:border-blue-300'
+                                  }`}
+                                >
+                                  {j.Texto}
+                                </button>
+                              );
+                            })}
+                            {justificationsAtraso.length === 0 && <p className="text-[9px] font-bold text-gray-300 uppercase italic">Nenhuma justificativa de Atraso cadastrada.</p>}
+                          </div>
                         </div>
                     </div>
                     <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl">Finalizar Agora</button>
